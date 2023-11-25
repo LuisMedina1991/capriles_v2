@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 use App\Models\Cover;
+use App\Models\Paydesk;
 use App\Models\ProviderPayable;
 use App\Models\Provider;
 use App\Models\Sale;
@@ -27,13 +28,13 @@ class Stocks extends Component
     public $office_id,$office_id_2,$product_id,$cant,$cant2,$type,$pf;
     private $pagination = 20;
 
-    public function paginationView(){
-
+    public function paginationView()
+    {
         return 'vendor.livewire.bootstrap';
     }
 
-    public function mount(){
-
+    public function mount()
+    {
         $this->pageTitle = 'listado';
         $this->formTitle = 'Traspaso';
         $this->componentName = 'inventario';
@@ -49,7 +50,6 @@ class Stocks extends Component
 
     public function render()
     {   
-
         //$this->my_total = $this->cov->balance;
         $vars = Product::with('offices')->get();
         
@@ -94,8 +94,8 @@ class Stocks extends Component
         ->section('content');
     }
 
-    public function Edit($id){
-        
+    public function Edit($id)
+    {
         $data = Product::join('office_product as stock','stock.product_id','products.id')
         ->join('offices','offices.id','stock.office_id')
         ->select('stock.*','products.code as product','offices.name as office')
@@ -108,302 +108,312 @@ class Stocks extends Component
         $this->type = 'Elegir';
         $this->prov_id = 'Elegir';
         $this->emit('show-modal', 'Abrir Modal');
-
     }
 
-    public function Update(){
-
+    public function Update()
+    {
         if($this->cov_det != null){
+
+            $paydesk = Paydesk::orderBy('id', 'asc')->whereBetween('created_at', [$this->from, $this->to])->where('type', 'Ventas')->get();
+
+            if (count($paydesk) == 0) {
         
-            $rules = [
+                $rules = [
 
-                'product_id' => ['not_in:Elegir',Rule::unique('office_product','product_id')
-                ->ignore($this->selected_id)
-                ->where(function ($query) {
-                    return $query->where('office_id',$this->office_id);
-                })],
-                'office_id' => 'not_in:Elegir',
-                'cant2' => 'required|numeric|integer',
-                'type' => 'not_in:Elegir',
-                'pf' => 'exclude_if:type,baja|required|numeric',
-                'description' => 'exclude_if:type,baja|exclude_if:type,devolucion|required|min:10|max:255',
-                'prov_id' => 'exclude_unless:type,compra|not_in:Elegir',
-            ];
+                    'product_id' => ['not_in:Elegir',Rule::unique('office_product','product_id')
+                    ->ignore($this->selected_id)
+                    ->where(function ($query) {
+                        return $query->where('office_id',$this->office_id);
+                    })],
+                    'office_id' => 'not_in:Elegir',
+                    'cant2' => 'required|numeric|integer',
+                    'type' => 'not_in:Elegir',
+                    'pf' => 'exclude_if:type,baja|required|numeric',
+                    'description' => 'exclude_if:type,baja|exclude_if:type,devolucion|required|min:10|max:255',
+                    'prov_id' => 'exclude_unless:type,compra|not_in:Elegir',
 
-            $messages = [
+                ];
 
-                'product_id.not_in' => 'Elija el codigo de algun producto',
-                'product_id.unique' => 'El producto ya existe en la sucursal',
-                'office_id.not_in' => 'Elija una sucursal',
-                'cant2.required' => 'La cantidad es requerida',
-                'cant2.numeric' => 'Este campo solo acepta numeros',
-                'cant2.integer' => 'Este campo solo acepta numeros enteros',
-                'type.not_in' => 'Seleccione una opcion',
-                'pf.required' => 'Ingrese N° de Recibo',
-                'pf.numeric' => 'Este campo solo acepta numeros',
-                'description.required' => 'La descripcion del ingreso es requerida',
-                'description.min' => 'La descripcion debe contener al menos 10 caracteres',
-                'description.max' => 'La descripcion debe contener 255 caracteres como maximo',
-                'prov_id.not_in' => 'Seleccione una opcion',
-            ];
-            
-            $this->validate($rules, $messages);
+                $messages = [
 
-            DB::beginTransaction();
+                    'product_id.not_in' => 'Elija el codigo de algun producto',
+                    'product_id.unique' => 'El producto ya existe en la sucursal',
+                    'office_id.not_in' => 'Elija una sucursal',
+                    'cant2.required' => 'La cantidad es requerida',
+                    'cant2.numeric' => 'Este campo solo acepta numeros',
+                    'cant2.integer' => 'Este campo solo acepta numeros enteros',
+                    'type.not_in' => 'Seleccione una opcion',
+                    'pf.required' => 'Ingrese N° de Recibo',
+                    'pf.numeric' => 'Este campo solo acepta numeros',
+                    'description.required' => 'La descripcion del ingreso es requerida',
+                    'description.min' => 'La descripcion debe contener al menos 10 caracteres',
+                    'description.max' => 'La descripcion debe contener 255 caracteres como maximo',
+                    'prov_id.not_in' => 'Seleccione una opcion',
 
-            $product = Product::find($this->product_id);
-            $office = Office::find($this->office_id);
-            $state = State::firstWhere('name','realizado');
-            
-                try {
+                ];
+                
+                $this->validate($rules, $messages);
 
-                    switch($this->type){
+                DB::beginTransaction();
 
-                        case 'Elegir': 
-                            
-                            $product->offices()->updateExistingPivot($this->office_id,[
-            
-                                'stock' => $this->cant2
-            
-                            ]);
-            
-                        break;
+                $product = Product::find($this->product_id);
+                $office = Office::find($this->office_id);
+                $state = State::firstWhere('name','realizado');
+                
+                    try {
 
-                        case 'baja': 
+                        switch($this->type){
 
-                            if($this->cant >= $this->cant2){
+                            case 'Elegir': 
+                                
+                                $product->offices()->updateExistingPivot($this->office_id,[
+                
+                                    'stock' => $this->cant2
+                
+                                ]);
+                
+                            break;
 
-                                $sale = Sale::create([
+                            case 'baja': 
+
+                                if($this->cant >= $this->cant2){
+
+                                    $sale = Sale::create([
+
+                                        'quantity' => $this->cant2,
+                                        'total' => 0,
+                                        'utility' => 0,
+                                        'cash' => 0,
+                                        'change' => 0,
+                                        'office' => $office->name,
+                                        'pf' => 0,
+                                        'state_id' => $state->id,
+                                        'user_id' => Auth()->user()->id,
+                                        'product_id' => $product->id
+                                    ]);
+                    
+                                    if($sale){
+
+                                        $product->offices()->updateExistingPivot($this->office_id,[
+                
+                                            'stock' => $this->cant - $this->cant2
+                        
+                                        ]);
+                                    }
+
+                                }else{
+
+                                    $this->emit('income-error', 'No puede dar de baja una cantidad mayor al stock actual');
+                                    return;
+                                }
+                
+                            break;
+                
+                            case 'devolucion': 
+
+                                $income = Income::create([
 
                                     'quantity' => $this->cant2,
-                                    'total' => 0,
-                                    'utility' => 0,
-                                    'cash' => 0,
-                                    'change' => 0,
+                                    'total' => $this->cant2 * $product->cost,
                                     'office' => $office->name,
-                                    'pf' => 0,
+                                    'pf' => $this->pf,
+                                    'type' => $this->type,
+                                    'relation' => 0,
                                     'state_id' => $state->id,
                                     'user_id' => Auth()->user()->id,
-                                    'product_id' => $product->id
+                                    'product_id' => $product->id,
+                
                                 ]);
                 
-                                if($sale){
-
+                                if($income){
+                
                                     $product->offices()->updateExistingPivot($this->office_id,[
-            
-                                        'stock' => $this->cant - $this->cant2
+                
+                                        'stock' => $this->cant + $this->cant2
                     
                                     ]);
+                
+                                    $this->cov->update([
+                                
+                                        'balance' => $this->cov->balance + $income->total
+                            
+                                    ]);
+                            
+                                    $this->cov_det->update([
+                        
+                                        'ingress' => $this->cov_det->ingress + $income->total,
+                                        'actual_balance' => $this->cov_det->actual_balance + $income->total
+                        
+                                    ]);
+                
                                 }
+                
+                            break;
+                
+                            case 'compra': 
 
-                            }else{
+                                $income = Income::create([
 
-                                $this->emit('income-error', 'No puede dar de baja una cantidad mayor al stock actual');
-                                return;
-                            }
-            
-                        break;
-            
-                        case 'devolucion': 
-
-                            $income = Income::create([
-
-                                'quantity' => $this->cant2,
-                                'total' => $this->cant2 * $product->cost,
-                                'office' => $office->name,
-                                'pf' => $this->pf,
-                                'type' => $this->type,
-                                'relation' => 0,
-                                'state_id' => $state->id,
-                                'user_id' => Auth()->user()->id,
-                                'product_id' => $product->id,
-            
-                            ]);
-            
-                            if($income){
-            
-                                $product->offices()->updateExistingPivot($this->office_id,[
-            
-                                    'stock' => $this->cant + $this->cant2
+                                    'quantity' => $this->cant2,
+                                    'total' => $this->cant2 * $product->cost,
+                                    'office' => $office->name,
+                                    'pf' => $this->pf,
+                                    'type' => $this->type,
+                                    'relation' => 0,
+                                    'state_id' => $state->id,
+                                    'user_id' => Auth()->user()->id,
+                                    'product_id' => $product->id,
                 
                                 ]);
-            
-                                $this->cov->update([
+                
+                                if($income){
+                
+                                    $product->offices()->updateExistingPivot($this->office_id,[
+                
+                                        'stock' => $this->cant + $this->cant2
+                
+                                    ]);
+                
+                                    $this->cov->update([
+                                
+                                        'balance' => $this->cov->balance + $income->total
                             
-                                    'balance' => $this->cov->balance + $income->total
-                        
-                                ]);
-                        
-                                $this->cov_det->update([
-                    
-                                    'ingress' => $this->cov_det->ingress + $income->total,
-                                    'actual_balance' => $this->cov_det->actual_balance + $income->total
-                    
-                                ]);
-            
-                            }
-            
-                        break;
-            
-                        case 'compra': 
-
-                            $income = Income::create([
-
-                                'quantity' => $this->cant2,
-                                'total' => $this->cant2 * $product->cost,
-                                'office' => $office->name,
-                                'pf' => $this->pf,
-                                'type' => $this->type,
-                                'relation' => 0,
-                                'state_id' => $state->id,
-                                'user_id' => Auth()->user()->id,
-                                'product_id' => $product->id,
-            
-                            ]);
-            
-                            if($income){
-            
-                                $product->offices()->updateExistingPivot($this->office_id,[
-            
-                                    'stock' => $this->cant + $this->cant2
-            
-                                ]);
-            
-                                $this->cov->update([
+                                    ]);
                             
-                                    'balance' => $this->cov->balance + $income->total
+                                    $this->cov_det->update([
                         
-                                ]);
+                                        'ingress' => $this->cov_det->ingress + $income->total,
+                                        'actual_balance' => $this->cov_det->actual_balance + $income->total
                         
-                                $this->cov_det->update([
-                    
-                                    'ingress' => $this->cov_det->ingress + $income->total,
-                                    'actual_balance' => $this->cov_det->actual_balance + $income->total
-                    
-                                ]);
-            
-                                $this->prov->update([
+                                    ]);
+                
+                                    $this->prov->update([
+                                
+                                        'balance' => $this->prov->balance + $income->total
                             
-                                    'balance' => $this->prov->balance + $income->total
-                        
-                                ]);
-                        
-                                $this->prov_det->update([
-                    
-                                    'ingress' => $this->prov_det->ingress + $income->total,
-                                    'actual_balance' => $this->prov_det->actual_balance + $income->total
-                    
-                                ]);
-            
-                                $provider = ProviderPayable::create([
-            
-                                    'description' => $this->description,
-                                    'amount' => $income->total,
-                                    'provider_id' => $this->prov_id
-            
-                                ]);
-
-                                $income->update([
+                                    ]);
                             
-                                    'relation' => $provider->id
+                                    $this->prov_det->update([
                         
-                                ]);
-                            }
-            
-                        break;
-            
-                        case 'importacion':
+                                        'ingress' => $this->prov_det->ingress + $income->total,
+                                        'actual_balance' => $this->prov_det->actual_balance + $income->total
+                        
+                                    ]);
+                
+                                    $provider = ProviderPayable::create([
+                
+                                        'description' => $this->description,
+                                        'amount' => $income->total,
+                                        'provider_id' => $this->prov_id
+                
+                                    ]);
 
-                            $provider = Provider::firstWhere('description',$this->type);
-
-                            $income = Income::create([
-
-                                'quantity' => $this->cant2,
-                                'total' => $this->cant2 * $product->cost,
-                                'office' => $office->name,
-                                'pf' => $this->pf,
-                                'type' => $this->type,
-                                'relation' => 0,
-                                'state_id' => $state->id,
-                                'user_id' => Auth()->user()->id,
-                                'product_id' => $product->id,
-            
-                            ]);
-            
-                            if($income){
-            
-                                $product->offices()->updateExistingPivot($this->office_id,[
-            
-                                    'stock' => $this->cant + $this->cant2
-            
-                                ]);
-            
-                                $this->cov->update([
+                                    $income->update([
+                                
+                                        'relation' => $provider->id
                             
-                                    'balance' => $this->cov->balance + $income->total
-                        
-                                ]);
-                        
-                                $this->cov_det->update([
-                    
-                                    'ingress' => $this->cov_det->ingress + $income->total,
-                                    'actual_balance' => $this->cov_det->actual_balance + $income->total
-                    
-                                ]);
-            
-                                $this->prov->update([
-                            
-                                    'balance' => $this->prov->balance + $income->total
-                        
-                                ]);
-                        
-                                $this->prov_det->update([
-                    
-                                    'ingress' => $this->prov_det->ingress + $income->total,
-                                    'actual_balance' => $this->prov_det->actual_balance + $income->total
-                    
-                                ]);
-            
-                                $provider_payable = ProviderPayable::create([
-            
-                                    'description' => $this->description,
-                                    'amount' => $income->total,
-                                    'provider_id' => $provider->id
-            
-                                ]);
+                                    ]);
+                                }
+                
+                            break;
+                
+                            case 'importacion':
 
-                                $income->update([
-                            
-                                    'relation' => $provider_payable->id
-                        
+                                $provider = Provider::firstWhere('description',$this->type);
+
+                                $income = Income::create([
+
+                                    'quantity' => $this->cant2,
+                                    'total' => $this->cant2 * $product->cost,
+                                    'office' => $office->name,
+                                    'pf' => $this->pf,
+                                    'type' => $this->type,
+                                    'relation' => 0,
+                                    'state_id' => $state->id,
+                                    'user_id' => Auth()->user()->id,
+                                    'product_id' => $product->id,
+                
                                 ]);
-                            }
-            
-                        break;
+                
+                                if($income){
+                
+                                    $product->offices()->updateExistingPivot($this->office_id,[
+                
+                                        'stock' => $this->cant + $this->cant2
+                
+                                    ]);
+                
+                                    $this->cov->update([
+                                
+                                        'balance' => $this->cov->balance + $income->total
+                            
+                                    ]);
+                            
+                                    $this->cov_det->update([
+                        
+                                        'ingress' => $this->cov_det->ingress + $income->total,
+                                        'actual_balance' => $this->cov_det->actual_balance + $income->total
+                        
+                                    ]);
+                
+                                    $this->prov->update([
+                                
+                                        'balance' => $this->prov->balance + $income->total
+                            
+                                    ]);
+                            
+                                    $this->prov_det->update([
+                        
+                                        'ingress' => $this->prov_det->ingress + $income->total,
+                                        'actual_balance' => $this->prov_det->actual_balance + $income->total
+                        
+                                    ]);
+                
+                                    $provider_payable = ProviderPayable::create([
+                
+                                        'description' => $this->description,
+                                        'amount' => $income->total,
+                                        'provider_id' => $provider->id
+                
+                                    ]);
+
+                                    $income->update([
+                                
+                                        'relation' => $provider_payable->id
+                            
+                                    ]);
+                                }
+                
+                            break;
+                        }
+
+                        DB::commit();
+                        $this->emit('item-updated', 'Stock Actualizado.');
+                        $this->resetUI();
+                        $this->mount();
+                        $this->render();
+
+                    } catch (Exception) {
+                        
+                        DB::rollback();
+                        $this->emit('income-error', 'Algo salio mal.');
                     }
 
-                    DB::commit();
-                    $this->emit('item-updated', 'Stock Actualizado.');
-                    $this->resetUI();
-                    $this->mount();
-                    $this->render();
+            } else {
 
-                } catch (Exception) {
-                    
-                    DB::rollback();
-                    $this->emit('income-error', 'Algo salio mal.');
-                }
+                $this->emit('cover-error', 'Anule las ventas del dia desde caja general primero');
+                return;
+            }
 
         }else{
 
             $this->emit('cover-error','Se debe crear caratula del dia.');
             return;
         }
-
     }
 
-    public function Charge($id){
-        
+    public function Charge($id)
+    {
         $data = Product::join('office_product as stock','stock.product_id','products.id')
         ->join('offices','offices.id','stock.office_id')
         ->select('stock.*','products.code as product','offices.name as office')
@@ -416,86 +426,95 @@ class Stocks extends Component
         $this->cant = $data->stock;
         $this->cant2 = $data->stock;
         $this->emit('show-modal2', 'Abrir Modal');
-
     }
 
-    public function Transfer(){
-
+    public function Transfer()
+    {
         if($this->cov_det != null){
 
-            $rules = [
+            $paydesk = Paydesk::orderBy('id', 'asc')->whereBetween('created_at', [$this->from, $this->to])->where('type','Ventas')->get();
 
-                'product_id' => 'required|not_in:Elegir',
-                'office_id' => 'required|not_in:Elegir',
-                'office_id_2' => "required|not_in:Elegir,$this->office_id",
-                'cant' => 'required',
-                'cant2' => "required|lte:$this->cant|numeric|integer",
-                'pf' => 'required|numeric',
-            ];
+            if(count($paydesk) == 0){
 
-            $messages = [
+                $rules = [
 
-                'product_id.required' => 'El codigo de producto es requerido',
-                'product_id.not_in' => 'Elija el codigo de algun producto',
-                'office_id.required' => 'La sucursal de origen es requerida',
-                'office_id.not_in' => 'Elija una sucursal de origen',
-                'office_id_2.required' => 'La sucursal de destino es requerida',
-                'office_id_2.not_in' => 'Elija una sucursal de destino diferente',
-                'cant.required' => 'El stock es requerido',
-                'cant2.required' => 'La cantidad a mover es requerida',
-                'cant2.lte' => 'La cantidad es mayor al stock',
-                'cant2.numeric' => 'Este campo solo acepta numeros',
-                'cant2.integer' => 'Este campo solo acepta numeros enteros',
-                'pf.required' => 'Ingrese N° de Recibo',
-                'pf.numeric' => 'Este campo solo acepta numeros',
-            ];
+                    'product_id' => 'required|not_in:Elegir',
+                    'office_id' => 'required|not_in:Elegir',
+                    'office_id_2' => "required|not_in:Elegir,$this->office_id",
+                    'cant' => 'required',
+                    'cant2' => "required|lte:$this->cant|numeric|integer",
+                    'pf' => 'required|numeric',
+                ];
 
-            $this->validate($rules, $messages);
+                $messages = [
 
-            DB::beginTransaction();
-            
-            try{
+                    'product_id.required' => 'El codigo de producto es requerido',
+                    'product_id.not_in' => 'Elija el codigo de algun producto',
+                    'office_id.required' => 'La sucursal de origen es requerida',
+                    'office_id.not_in' => 'Elija una sucursal de origen',
+                    'office_id_2.required' => 'La sucursal de destino es requerida',
+                    'office_id_2.not_in' => 'Elija una sucursal de destino diferente',
+                    'cant.required' => 'El stock es requerido',
+                    'cant2.required' => 'La cantidad a mover es requerida',
+                    'cant2.lte' => 'La cantidad es mayor al stock',
+                    'cant2.numeric' => 'Este campo solo acepta numeros',
+                    'cant2.integer' => 'Este campo solo acepta numeros enteros',
+                    'pf.required' => 'Ingrese N° de Recibo',
+                    'pf.numeric' => 'Este campo solo acepta numeros',
+                ];
 
-                $product = Product::find($this->product_id);
-                $office_1 = Office::find($this->office_id);
-                $office_2 = Office::find($this->office_id_2);
-                $state = State::firstWhere('name','realizado');
+                $this->validate($rules, $messages);
+
+                DB::beginTransaction();
                 
-                Transfer::create([
+                try{
 
-                    'quantity' => $this->cant2,
-                    'total' => $product->cost * $this->cant2,
-                    'pf' => $this->pf,
-                    'from_office' => $office_1->name,
-                    'to_office' => $office_2->name,
-                    'state_id' => $state->id,
-                    'user_id' => Auth()->user()->id,
-                    'product_id' => $product->id,
+                    $product = Product::find($this->product_id);
+                    $office_1 = Office::find($this->office_id);
+                    $office_2 = Office::find($this->office_id_2);
+                    $state = State::firstWhere('name','realizado');
+                    
+                    Transfer::create([
 
-                ]);
+                        'quantity' => $this->cant2,
+                        'total' => $product->cost * $this->cant2,
+                        'pf' => $this->pf,
+                        'from_office' => $office_1->name,
+                        'to_office' => $office_2->name,
+                        'state_id' => $state->id,
+                        'user_id' => Auth()->user()->id,
+                        'product_id' => $product->id,
 
-                $product->offices()->updateExistingPivot($this->office_id,[
+                    ]);
 
-                    'stock' => $this->cant - $this->cant2
+                    $product->offices()->updateExistingPivot($this->office_id,[
 
-                ]);
-                
-                $product->offices()->updateExistingPivot($this->office_id_2,[
+                        'stock' => $this->cant - $this->cant2
 
-                    'stock' => $product->offices()->get()->firstWhere('pivot.office_id',$this->office_id_2)->pivot->stock + $this->cant2
+                    ]);
+                    
+                    $product->offices()->updateExistingPivot($this->office_id_2,[
 
-                ]);
-                
-                DB::commit();
-                $this->emit('item-transfered', 'Producto Traspasado.');
-                $this->resetUI();
-                $this->mount();
-                $this->render();
+                        'stock' => $product->offices()->get()->firstWhere('pivot.office_id',$this->office_id_2)->pivot->stock + $this->cant2
 
-            }catch(Exception){
+                    ]);
+                    
+                    DB::commit();
+                    $this->emit('item-transfered', 'Producto Traspasado.');
+                    $this->resetUI();
+                    $this->mount();
+                    $this->render();
 
-                DB::rollback();
-                $this->emit('income-error','Algo salio mal.');
+                }catch(Exception){
+
+                    DB::rollback();
+                    $this->emit('income-error','Algo salio mal.');
+                }
+
+            }else{
+
+                $this->emit('cover-error', 'Anule las ventas del dia desde caja general primero');
+                return;
             }
 
         }else{
@@ -511,8 +530,8 @@ class Stocks extends Component
         'destroy' => 'Destroy'
     ];
 
-    public function Destroy(Product $product){
-
+    public function Destroy(Product $product)
+    {
         if($this->cov_det != null){
 
             if(($product->offices->sum('pivot.stock')) < 1){
@@ -552,11 +571,10 @@ class Stocks extends Component
             $this->emit('cover-error','Se debe crear caratula del dia.');
             return;
         }
-
     }
 
-    public function resetUI(){
-
+    public function resetUI()
+    {
         $this->office_id_2 = 'Elegir';
         $this->cant = '';
         $this->cant2 = '';
