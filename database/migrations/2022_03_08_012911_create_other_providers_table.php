@@ -16,8 +16,8 @@ class CreateOtherProvidersTable extends Migration
         Schema::create('other_providers', function (Blueprint $table) {
             $table->id();
             $table->string('reference');
-            $table->text('description',1000);
-            $table->decimal('amount',10,2);
+            $table->text('description');
+            $table->decimal('amount',60,30);
             $table->timestamps();
         });
     }
