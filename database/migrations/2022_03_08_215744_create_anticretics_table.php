@@ -15,9 +15,9 @@ class CreateAnticreticsTable extends Migration
     {
         Schema::create('anticretics', function (Blueprint $table) {
             $table->id();
-            $table->string('reference',45);
+            $table->string('reference');
             $table->string('description');
-            $table->decimal('amount',10,2);
+            $table->decimal('amount',60,30);
             $table->timestamps();
         });
     }
