@@ -6,20 +6,23 @@
                     <b>{{$componentName}} | {{$pageTitle}}</b>
                 </h4>
                 <div class="container">
-                    <div class="row row-cols-3">
-                        <div class="col">
+                    <div class="row">
+                        <div class="col-sm-3">
                             <h5 class="mr-5">TOTAL POR PAGAR: ${{ number_format($my_total,2)}}</h5>
                         </div>
                         @can('agregar_registro')
-                        <div class="col">
+                        <div class="col-sm-3">
                             <a href="javascript:void(0)" class="btn btn-dark btn-md" data-toggle="modal" data-target="#theModal">Agregar</a>
                         </div>
                         @endcan
-                        <div class="col">
+                        <div class="col-sm-3">
                             <a href="{{ url('gym_report/pdf' . '/' . $my_total) }}" class="btn btn-dark btn-md" target="_blank">
                                 Generar PDF
                             </a>
                         </div>
+                        {{--<div class="col-sm-3">
+                            <a href="javascript:void(0)" class="btn btn-dark btn-md" data-toggle="modal" data-target="#data_import_modal" title="Cargar Datos">Importar</a>
+                        </div>--}}
                     </div>
                 </div>
             </div>
@@ -61,6 +64,7 @@
         </div>
     </div>
     @include('livewire.gym.form')
+    @include('livewire.gym.data_import')
 </div>
 
 
@@ -99,6 +103,15 @@
 
         window.livewire.on('movement-error', Msg => {   //evento para los errores del componente
             noty(Msg,2)
+        });
+
+        window.livewire.on('show-data-import-modal', msg=>{ //evento para mostral modal de carga de datos
+            $('#data_import_modal').modal('show')
+        });
+
+        window.livewire.on('import-successfull', msg=>{ //evento al cargar datos correctamente
+            $('#data_import_modal').modal('hide')
+            noty(msg)
         });
 
     });
