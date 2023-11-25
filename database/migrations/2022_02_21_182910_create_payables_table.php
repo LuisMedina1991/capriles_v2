@@ -15,9 +15,9 @@ class CreatePayablesTable extends Migration
     {
         Schema::create('payables', function (Blueprint $table) {
             $table->id();
-            $table->string('reference',45);
-            $table->text('description',1000);
-            $table->decimal('amount',10,2);
+            $table->string('reference');
+            $table->text('description');
+            $table->decimal('amount',60,30);
             $table->timestamps();
         });
     }
