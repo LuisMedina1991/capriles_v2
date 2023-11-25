@@ -15,10 +15,10 @@ class CreateBillsTable extends Migration
     {
         Schema::create('bills', function (Blueprint $table) {
             $table->id();
-            $table->string('reference',45);
-            $table->text('description',1000);
+            $table->string('reference');
+            $table->text('description');
             $table->enum('type',['normal','acumulativa']);
-            $table->decimal('amount',10,2);
+            $table->decimal('amount',60,30);
             $table->timestamps();
         });
     }
