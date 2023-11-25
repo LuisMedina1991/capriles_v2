@@ -65,7 +65,7 @@
                                     <a wire:click.prevent="Details({{$check->id}})" class="btn btn-dark mtmobile" title="Detalles">
                                         <i class="fas fa-list"></i>
                                     </a>
-                                    @can('record_delete')
+                                    @can('eliminar_registro')
                                     <a href="javascript:void(0)" onclick="Confirm('{{$check->id}}')" class="btn btn-dark" title="Eliminar">
                                         <i class="fas fa-trash"></i>
                                     </a>
