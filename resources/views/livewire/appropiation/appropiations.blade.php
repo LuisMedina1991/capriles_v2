@@ -45,7 +45,7 @@
                             <tr>
                                 <td><h6 class="text-center">{{$appropiation->reference}}</h6></td>   
                                 <td><h6 class="text-center">{{$appropiation->description}}</h6></td>                         
-                                <td><h6 class="text-center">${{$appropiation->amount}}</h6></td>
+                                <td><h6 class="text-center">${{number_format($appropiation->amount,2)}}</h6></td>
                                 <td class="text-center">
                                     <a wire:click.prevent="Details({{$appropiation->id}})" class="btn btn-dark mtmobile" title="Detalles">
                                         <i class="fas fa-list"></i>
