@@ -5,13 +5,25 @@
                 <h4 class="card-title text-uppercase">
                     <b>{{$componentName}} | {{$pageTitle}}</b>
                 </h4>
-                @can('agregar_registro')
+                <div class="container">
+                    <div class="row">
+                        @can('agregar_registro')
+                        <div class="col-sm-3">
+                            <a href="javascript:void(0)" class="btn btn-dark btn-md" data-toggle="modal" data-target="#theModal">Agregar</a>
+                        </div>
+                        @endcan
+                        {{--<div class="col-sm-3">
+                            <a href="javascript:void(0)" class="btn btn-dark btn-md" data-toggle="modal" data-target="#data_import_modal" title="Cargar Datos">Importar</a>
+                        </div>--}}
+                    </div>
+                </div>
+                {{--@can('agregar_registro')
                 <ul class="tabs tab-pills">
                     <li>
                         <a href="javascript:void(0)" class="tabmenu bg-dark" data-toggle="modal" data-target="#theModal">Agregar</a>
                     </li>
                 </ul>
-                @endcan
+                @endcan--}}
             </div>
             
             @include('common.searchbox')
@@ -59,6 +71,7 @@
         </div>
     </div>
     @include('livewire.costumer.form')
+    @include('livewire.costumer.data_import')
 </div>
 
 
@@ -90,6 +103,19 @@
 
         $('#theModal').on('shown.bs.modal', function(e){    //metodo para autofocus a campo determinado
             $('.component-name').focus()
+        });
+
+        window.livewire.on('movement-error', Msg => {   //evento para los errores del componente
+            noty(Msg,2)
+        });
+
+        window.livewire.on('show-data-import-modal', msg=>{ //evento para mostral modal de carga de datos
+            $('#data_import_modal').modal('show')
+        });
+
+        window.livewire.on('import-successfull', msg=>{ //evento al cargar datos correctamente
+            $('#data_import_modal').modal('hide')
+            noty(msg)
         });
 
     });
