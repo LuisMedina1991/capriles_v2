@@ -15,8 +15,8 @@ class CreateImportsTable extends Migration
     {
         Schema::create('imports', function (Blueprint $table) {
             $table->id();
-            $table->string('description',255);
-            $table->decimal('amount',10,2);
+            $table->string('description');
+            $table->decimal('amount',60,30);
             $table->timestamps();
         });
     }
