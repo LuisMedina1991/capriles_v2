@@ -10,14 +10,19 @@ use App\Models\Cover;
 use App\Models\Detail;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Livewire\WithFileUploads;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\ImportsImport;
 
 class Imports extends Component
 {
     use WithPagination;
+    use WithFileUploads;
 
     public $description,$description_2,$amount,$amount_2,$search,$selected_id,$pageTitle,$componentName,$my_total,$details;
     public $from,$to,$cov,$cov_det;
     private $pagination = 20;
+    public $data_to_import;
 
     public function paginationView(){
 
@@ -34,6 +39,7 @@ class Imports extends Component
         $this->to = Carbon::parse(Carbon::now())->format('Y-m-d') . ' 23:59:59';
         $this->cov = Cover::firstWhere('description',$this->componentName);
         $this->cov_det = $this->cov->details->where('cover_id',$this->cov->id)->whereBetween('created_at',[$this->from, $this->to])->first();
+        $this->data_to_import = null;
     }
 
     public function render()
@@ -141,7 +147,7 @@ class Imports extends Component
         
         $this->selected_id = $import->id;
         $this->description = $import->description;
-        $this->amount = $import->amount;
+        $this->amount = number_format($import->amount,2);
         $this->amount_2 = 0;
         
         $this->emit('show-modal2', 'Abrir Modal');
@@ -314,7 +320,7 @@ class Imports extends Component
             
                 try {
 
-                    if(($det->actual_balance + $det->amount) == ($import->amount + $det->amount)){
+                    if(($det->actual_balance + $det->amount) == (number_format($import->amount,2) + $det->amount)){
                         
                         $import->update([
                     
@@ -363,6 +369,38 @@ class Imports extends Component
         
     }
 
+    public function ImportData(){
+
+        $rules = [
+
+            'data_to_import' => 'required|file|max:2048|mimes:csv,xls,xlsx'
+        ];
+
+        $messages = [
+
+            'data_to_import.required' => 'Seleccione un archivo',
+            'data_to_import.file' => 'Seleccione un archivo valido',
+            'data_to_import.max' => 'Maximo 2 mb',
+            'data_to_import.mimes' => 'Solo archivos excel'
+        ];
+        
+        $this->validate($rules, $messages);
+
+        try {
+
+            Excel::import(new ImportsImport,$this->data_to_import);
+            $this->emit('import-successfull','Carga de datos exitosa.');
+            $this->resetUI();
+
+        } catch (\Exception $e) {
+
+            $this->emit('movement-error', 'Error al cargar datos.');
+            return;
+
+        }
+
+    }
+
     public function resetUI(){
 
         $this->description = '';
@@ -371,6 +409,7 @@ class Imports extends Component
         $this->amount_2 = 0;
         $this->search = '';
         $this->selected_id = 0;
+        $this->data_to_import = null;
         $this->resetValidation();
         $this->resetPage();
     }

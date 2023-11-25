@@ -12,14 +12,19 @@ use App\Models\Cover;
 use App\Models\Detail;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Livewire\WithFileUploads;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\CheckReceivablesImport;
 
 class CheckReceivables extends Component
 {
     use WithPagination;
+    use WithFileUploads;
 
     public $description,$costumer,$bank,$number,$amount,$search,$selected_id,$pageTitle,$componentName,$my_total,$details;
     public $from,$to,$cov,$cov_det;
     private $pagination = 20;
+    public $data_to_import;
 
     public function paginationView(){
 
@@ -38,6 +43,7 @@ class CheckReceivables extends Component
         $this->to = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 23:59:59';
         $this->cov = Cover::firstWhere('description',$this->componentName);
         $this->cov_det = $this->cov->details->where('cover_id',$this->cov->id)->whereBetween('created_at',[$this->from, $this->to])->first();
+        $this->data_to_import = null;
     }
 
     public function render()
@@ -172,7 +178,7 @@ class CheckReceivables extends Component
         $this->costumer = $check->costumer_id;
         $this->bank = $check->bank_id;
         $this->number = $check->number;
-        $this->amount = $check->amount;
+        $this->amount = number_format($check->amount,2);
         
         $this->emit('show-modal', 'Abrir Modal');
 
@@ -355,7 +361,7 @@ class CheckReceivables extends Component
             
                 try {
 
-                    if(($det->actual_balance + $det->amount) == ($check->amount + $det->amount)){
+                    if(($det->actual_balance + $det->amount) == (number_format($check->amount,2) + $det->amount)){
                         
                         $check->update([
                     
@@ -404,6 +410,38 @@ class CheckReceivables extends Component
         
     }
 
+    public function ImportData(){
+
+        $rules = [
+
+            'data_to_import' => 'required|file|max:2048|mimes:csv,xls,xlsx'
+        ];
+
+        $messages = [
+
+            'data_to_import.required' => 'Seleccione un archivo',
+            'data_to_import.file' => 'Seleccione un archivo valido',
+            'data_to_import.max' => 'Maximo 2 mb',
+            'data_to_import.mimes' => 'Solo archivos excel'
+        ];
+        
+        $this->validate($rules, $messages);
+
+        try {
+
+            Excel::import(new CheckReceivablesImport,$this->data_to_import);
+            $this->emit('import-successfull','Carga de datos exitosa.');
+            $this->resetUI();
+
+        } catch (\Exception $e) {
+
+            $this->emit('movement-error', 'Error al cargar datos.');
+            return;
+
+        }
+
+    }
+
     public function resetUI(){
 
         $this->description = '';
@@ -413,6 +451,7 @@ class CheckReceivables extends Component
         $this->selected_id = 0;
         $this->costumer = 'Elegir';
         $this->bank = 'Elegir';
+        $this->data_to_import = null;
         $this->resetValidation();
         $this->resetPage();
     }

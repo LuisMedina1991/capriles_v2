@@ -5,13 +5,18 @@ namespace App\Http\Livewire;
 use Livewire\Component;
 use App\Models\Provider;
 use Livewire\WithPagination;
+use Livewire\WithFileUploads;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\ProvidersImport;
 
 class Providers extends Component
 {
     use WithPagination;
+    use WithFileUploads;
 
     public $description,$phone,$fax,$email,$country,$city,$search,$selected_id,$pageTitle,$componentName;
     private $pagination =20;
+    public $data_to_import;
 
     public function paginationView(){
 
@@ -22,6 +27,7 @@ class Providers extends Component
 
         $this->pageTitle = 'listado';
         $this->componentName = 'proveedores';
+        $this->data_to_import = null;
     }
 
     public function render()
@@ -53,7 +59,7 @@ class Providers extends Component
 
         $rules = [
 
-            'description' => 'required|min:3|unique:providers',
+            'description' => 'required|min:3|max:45|unique:providers',
             'country' => 'required',
             'city' => 'required'
         ];
@@ -62,6 +68,7 @@ class Providers extends Component
 
             'description.required' => 'La descripcion del proveedor es requerida',
             'description.min' => 'La descripcion del proveedor debe contener al menos 3 caracteres',
+            'description.max' => 'La descripcion del proveedor debe maximo 45 caracteres',
             'description.unique' => 'El proveedor ya fue registrado',
             'country.required' => 'El pais del proveedor es requerido',
             'city.required' => 'La ciudad del proveedor es requerida'
@@ -102,7 +109,7 @@ class Providers extends Component
         
         $rules = [
 
-            'description' => "required|min:3|unique:providers,description,{$this->selected_id}",
+            'description' => "required|min:3|max:45|unique:providers,description,{$this->selected_id}",
             'country' => 'required',
             'city' => 'required'
         ];
@@ -111,6 +118,7 @@ class Providers extends Component
 
             'description.required' => 'La descripcion del proveedor es requerida',
             'description.min' => 'La descripcion del proveedor debe contener al menos 3 caracteres',
+            'description.max' => 'La descripcion del proveedor debe maximo 45 caracteres',
             'description.unique' => 'El proveedor ya fue registrado',
             'country.required' => 'El pais del proveedor es requerido',
             'city.required' => 'La ciudad del proveedor es requerida'
@@ -146,6 +154,38 @@ class Providers extends Component
         $this->emit('item-deleted', 'Registro Eliminado');
     }
 
+    public function ImportData(){
+
+        $rules = [
+
+            'data_to_import' => 'required|file|max:2048|mimes:csv,xls,xlsx'
+        ];
+
+        $messages = [
+
+            'data_to_import.required' => 'Seleccione un archivo',
+            'data_to_import.file' => 'Seleccione un archivo valido',
+            'data_to_import.max' => 'Maximo 2 mb',
+            'data_to_import.mimes' => 'Solo archivos excel'
+        ];
+        
+        $this->validate($rules, $messages);
+
+        try {
+
+            Excel::import(new ProvidersImport,$this->data_to_import);
+            $this->emit('import-successfull','Carga de datos exitosa.');
+            $this->resetUI();
+
+        } catch (\Exception $e) {
+
+            $this->emit('movement-error', 'Error al cargar datos.');
+            return;
+
+        }
+
+    }
+
     public function resetUI(){
 
         $this->description = '';
@@ -156,6 +196,7 @@ class Providers extends Component
         $this->city = '';
         $this->search = '';
         $this->selected_id = 0;
+        $this->data_to_import = null;
         $this->resetValidation();
         $this->resetPage();
     }

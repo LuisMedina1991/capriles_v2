@@ -10,15 +10,20 @@ use App\Models\Cover;
 use App\Models\Detail;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Livewire\WithFileUploads;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\BillsImport;
 
 class Bills extends Component
 {
     use WithPagination;
+    use WithFileUploads;
 
     public $description,$description_2,$reference,$amount,$amount_2,$type,$search,$selected_id,$pageTitle,$componentName,$details,$action;
     public $from,$to,$cov,$cov_det,$bll,$bll_det,$bll1,$bll1_det;
     public $my_total;
     private $pagination = 20;
+    public $data_to_import;
 
     public function paginationView(){
 
@@ -40,6 +45,7 @@ class Bills extends Component
         $this->bll_det = $this->bll->details->where('cover_id',$this->bll->id)->whereBetween('created_at',[$this->from, $this->to])->first();
         $this->bll1 = Cover::firstWhere('description','facturas 6% del dia');
         $this->bll1_det = $this->bll1->details->where('cover_id',$this->bll1->id)->whereBetween('created_at',[$this->from, $this->to])->first();
+        $this->data_to_import = null;
     }
 
     public function render()
@@ -179,7 +185,7 @@ class Bills extends Component
         $this->description = $bill->description;
         $this->reference = $bill->reference;
         $this->type = $bill->type;
-        $this->amount = $bill->amount;
+        $this->amount = number_format($bill->amount,2);
         $this->description_2 = '';
         $this->amount_2 = '';
         $this->action = 'Elegir';
@@ -471,7 +477,7 @@ class Bills extends Component
 
                     if($det->actual_balance > $det->previus_balance){
 
-                        if(($det->actual_balance - $det->amount) == ($bill->amount - $det->amount)){
+                        if(($det->actual_balance - $det->amount) == (number_format($bill->amount,2) - $det->amount)){
 
                             $bill->update([
                             
@@ -526,7 +532,7 @@ class Bills extends Component
 
                     }else{
 
-                        if(($det->actual_balance + $det->amount) == ($bill->amount + $det->amount)){
+                        if(($det->actual_balance + $det->amount) == (number_format($bill->amount,2) + $det->amount)){
                             
                             $bill->update([
                         
@@ -598,6 +604,38 @@ class Bills extends Component
         
     }
 
+    public function ImportData(){
+
+        $rules = [
+
+            'data_to_import' => 'required|file|max:2048|mimes:csv,xls,xlsx'
+        ];
+
+        $messages = [
+
+            'data_to_import.required' => 'Seleccione un archivo',
+            'data_to_import.file' => 'Seleccione un archivo valido',
+            'data_to_import.max' => 'Maximo 2 mb',
+            'data_to_import.mimes' => 'Solo archivos excel'
+        ];
+        
+        $this->validate($rules, $messages);
+
+        try {
+
+            Excel::import(new BillsImport,$this->data_to_import);
+            $this->emit('import-successfull','Carga de datos exitosa.');
+            $this->resetUI();
+
+        } catch (\Exception $e) {
+
+            $this->emit('movement-error', 'Error al cargar datos.');
+            return;
+
+        }
+
+    }
+
     public function resetUI(){
 
         $this->description = '';
@@ -608,6 +646,7 @@ class Bills extends Component
         $this->search = '';
         $this->action = 'Elegir';
         $this->selected_id = 0;
+        $this->data_to_import = null;
         $this->resetValidation();
         $this->resetPage();
     }

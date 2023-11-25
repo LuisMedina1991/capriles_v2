@@ -10,15 +10,20 @@ use App\Models\Cover;
 use App\Models\Detail;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Livewire\WithFileUploads;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\AppropriationsImport;
 
 class Appropiations extends Component
 {
     use WithPagination;
+    use WithFileUploads;
 
     public $description,$description_2,$reference,$amount,$amount_2,$search,$selected_id,$pageTitle,$componentName,$details,$action;
     public $from,$to,$cov,$cov_det;
     public $my_total;
     private $pagination = 20;
+    public $data_to_import;
 
     public function paginationView(){
 
@@ -35,6 +40,7 @@ class Appropiations extends Component
         $this->to = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 23:59:59';
         $this->cov = Cover::firstWhere('description',$this->componentName);
         $this->cov_det = $this->cov->details->where('cover_id',$this->cov->id)->whereBetween('created_at',[$this->from, $this->to])->first();
+        $this->data_to_import = null;
     }
 
     public function render()
@@ -146,7 +152,7 @@ class Appropiations extends Component
         $this->selected_id = $appropiation->id;
         $this->description = $appropiation->description;
         $this->reference = $appropiation->reference;
-        $this->amount = $appropiation->amount;
+        $this->amount = number_format($appropiation->amount,2);
         $this->description_2 = '';
         $this->amount_2 = '';
         $this->action = 'Elegir';
@@ -372,7 +378,7 @@ class Appropiations extends Component
 
                     if($det->actual_balance > $det->previus_balance){
 
-                        if(($det->actual_balance - $det->amount) == ($appropiation->amount - $det->amount)){
+                        if(($det->actual_balance - $det->amount) == (number_format($appropiation->amount,2) - $det->amount)){
 
                             $appropiation->update([
                             
@@ -404,7 +410,7 @@ class Appropiations extends Component
 
                     }else{
 
-                        if(($det->actual_balance + $det->amount) == ($appropiation->amount + $det->amount)){
+                        if(($det->actual_balance + $det->amount) == (number_format($appropiation->amount,2) + $det->amount)){
                             
                             $appropiation->update([
                         
@@ -454,6 +460,38 @@ class Appropiations extends Component
         
     }
 
+    public function ImportData(){
+
+        $rules = [
+
+            'data_to_import' => 'required|file|max:2048|mimes:csv,xls,xlsx'
+        ];
+
+        $messages = [
+
+            'data_to_import.required' => 'Seleccione un archivo',
+            'data_to_import.file' => 'Seleccione un archivo valido',
+            'data_to_import.max' => 'Maximo 2 mb',
+            'data_to_import.mimes' => 'Solo archivos excel'
+        ];
+        
+        $this->validate($rules, $messages);
+
+        try {
+
+            Excel::import(new AppropriationsImport,$this->data_to_import);
+            $this->emit('import-successfull','Carga de datos exitosa.');
+            $this->resetUI();
+
+        } catch (\Exception $e) {
+
+            $this->emit('movement-error', 'Error al cargar datos.');
+            return;
+
+        }
+
+    }
+
     public function resetUI(){
 
         $this->description = '';
@@ -464,6 +502,7 @@ class Appropiations extends Component
         $this->search = '';
         $this->action = 'Elegir';
         $this->selected_id = 0;
+        $this->data_to_import = null;
         $this->resetValidation();
         $this->resetPage();
     }

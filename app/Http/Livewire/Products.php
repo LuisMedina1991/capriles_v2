@@ -10,6 +10,9 @@ use App\Models\Office;
 use App\Models\State;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
+use Exception;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\ProductsImport;
 
 class Products extends Component
 {
@@ -18,6 +21,7 @@ class Products extends Component
 
     public $descripcion,$marca,$aro,$trilla,$lona,$code,$cost,$price,$state,$search,$selected_id,$pageTitle,$componentName,$image,$catId,$subId;
     private $pagination = 40;
+    public $data_to_import;
 
     public function paginationView(){
 
@@ -31,6 +35,7 @@ class Products extends Component
         $this->catId = 1;
         $this->subId = 'Elegir';
         $this->state = 'Elegir';
+        $this->data_to_import = null;
         //$this->subcategories = [];
 
     }
@@ -95,8 +100,8 @@ class Products extends Component
 
         $rules = [
 
-            'descripcion' => 'required|min:3',
-            'code' => 'required|min:5|unique:products',
+            'descripcion' => 'required|min:3|max:20',
+            'code' => 'required|min:5|max:20|unique:products',
             'cost' => 'required',
             'price' => 'required',
             'state' => 'required|not_in:Elegir',
@@ -108,8 +113,10 @@ class Products extends Component
 
             'descripcion.required' => 'La medida del producto es requerida',
             'descripcion.min' => 'La medida del producto debe contener al menos 3 caracteres',
+            'descripcion.max' => 'La medida del producto debe contener maximo 20 caracteres',
             'code.required' => 'El codigo del producto es requerido',
             'code.min' => 'El codigo del producto debe contener al menos 5 caracteres',
+            'code.max' => 'La medida del producto debe contener maximo 20 caracteres',
             'code.unique' => 'El codigo de producto ya existe',
             'cost.required' => 'El costo es requerido',
             'price.required' => 'El precio es requerido',
@@ -180,8 +187,8 @@ class Products extends Component
         $this->trilla = $product->threshing;
         $this->lona = $product->tarp;
         $this->code = $product->code;
-        $this->cost = $product->cost;
-        $this->price = $product->price;
+        $this->cost = number_format($product->cost,2);
+        $this->price = number_format($product->price,2);
         $this->catId = $pivot->cat;
         $this->subId = $pivot->sub;
         $this->state = $product->state_id;
@@ -198,8 +205,8 @@ class Products extends Component
         
         $rules = [
 
-            'descripcion' => 'required|min:3',
-            'code' => "required|min:5|unique:products,code,{$this->selected_id}",
+            'descripcion' => 'required|min:3|max:20',
+            'code' => "required|min:5|max:20|unique:products,code,{$this->selected_id}",
             'cost' => 'required',
             'price' => 'required',
             'catId' => 'required|not_in:Elegir',
@@ -211,8 +218,10 @@ class Products extends Component
 
             'descripcion.required' => 'La medida del producto es requerida',
             'descripcion.min' => 'La medida del producto debe contener al menos 3 caracteres',
+            'descripcion.max' => 'La medida del producto debe contener maximo 20 caracteres',
             'code.required' => 'El codigo del producto es requerido',
             'code.min' => 'El codigo del producto debe contener al menos 5 caracteres',
+            'code.max' => 'La medida del producto debe contener maximo 20 caracteres',
             'code.unique' => 'El codigo de producto ya existe',
             'cost.required' => 'El costo es requerido',
             'price.required' => 'El precio es requerido',
@@ -284,6 +293,38 @@ class Products extends Component
         $this->emit('item-deleted', 'Registro Eliminado');  //evento a ser escuchado desde el frontend
     }
 
+    public function ImportData(){
+
+        $rules = [
+
+            'data_to_import' => 'required|file|max:2048|mimes:csv,xls,xlsx'
+        ];
+
+        $messages = [
+
+            'data_to_import.required' => 'Seleccione un archivo',
+            'data_to_import.file' => 'Seleccione un archivo valido',
+            'data_to_import.max' => 'Maximo 2 mb',
+            'data_to_import.mimes' => 'Solo archivos excel'
+        ];
+        
+        $this->validate($rules, $messages);
+
+        try {
+
+            Excel::import(new ProductsImport,$this->data_to_import);
+            $this->emit('import-successfull','Carga de datos exitosa.');
+            $this->resetUI();
+
+        } catch (\Exception $e) {
+
+            $this->emit('movement-error',$e->getMessage());
+            return;
+
+        }
+
+    }
+
     public function resetUI(){  //metodo para limpiar la informacion de las propiedades publicas
 
         $this->descripcion = '';
@@ -300,6 +341,7 @@ class Products extends Component
         //$this->image = null;
         $this->search = '';
         $this->selected_id = '0';
+        $this->data_to_import = null;
         $this->resetValidation();   //metodo para limpiar las validaciones del formulario
         $this->resetPage(); //metodo de livewire para volver al listado principal
     }
