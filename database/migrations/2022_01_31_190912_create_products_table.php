@@ -21,8 +21,8 @@ class CreateProductsTable extends Migration
             $table->string('ring',45)->nullable();
             $table->string('threshing',45)->nullable();
             $table->string('tarp',45)->nullable();
-            $table->decimal('cost',10,2);
-            $table->decimal('price',10,2);
+            $table->decimal('cost',60,30);
+            $table->decimal('price',60,30);
             $table->unsignedBigInteger('category_subcategory_id');
             $table->foreign('category_subcategory_id')->references('id')->on('category_subcategory')->onDelete('cascade')->onUpdate('cascade');
             $table->foreignId('state_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
