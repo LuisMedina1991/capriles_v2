@@ -312,7 +312,9 @@ class Stocks extends Component
             
                         break;
             
-                        case 'importacion': 
+                        case 'importacion':
+
+                            $provider = Provider::firstWhere('description',$this->type);
 
                             $income = Income::create([
 
@@ -362,17 +364,17 @@ class Stocks extends Component
                     
                                 ]);
             
-                                $provider = ProviderPayable::create([
+                                $provider_payable = ProviderPayable::create([
             
                                     'description' => $this->description,
                                     'amount' => $income->total,
-                                    'provider_id' => 28
+                                    'provider_id' => $provider->id
             
                                 ]);
 
                                 $income->update([
                             
-                                    'relation' => $provider->id
+                                    'relation' => $provider_payable->id
                         
                                 ]);
                             }
