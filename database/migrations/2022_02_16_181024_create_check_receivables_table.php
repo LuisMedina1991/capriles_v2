@@ -15,8 +15,8 @@ class CreateCheckReceivablesTable extends Migration
     {
         Schema::create('check_receivables', function (Blueprint $table) {
             $table->id();
-            $table->string('description',100);
-            $table->decimal('amount',10,2);
+            $table->text('description');
+            $table->decimal('amount',60,30);
             $table->string('number',45);
             $table->foreignId('bank_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('costumer_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
