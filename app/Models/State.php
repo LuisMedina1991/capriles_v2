@@ -9,7 +9,7 @@ class State extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name'];
+    protected $fillable = ['name','type'];
 
     //relacion uno a muchos con incomes
     public function incomes(){
