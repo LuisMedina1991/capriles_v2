@@ -6,20 +6,23 @@
                     <b>{{$componentName}} | {{$pageTitle}}</b>
                 </h4>
                 <div class="container">
-                    <div class="row row-cols-3">
-                        <div class="col">
+                    <div class="row">
+                        <div class="col-sm-3">
                             <h5 class="mr-5">TOTAL POR PAGAR: ${{ number_format($my_total,2)}}</h5>
                         </div>
                         @can('agregar_registro')
-                        <div class="col">
+                        <div class="col-sm-3">
                             <a href="javascript:void(0)" class="btn btn-dark btn-md" data-toggle="modal" data-target="#theModal">Agregar</a>
                         </div>
                         @endcan
-                        <div class="col">
+                        <div class="col-sm-3">
                             <a href="{{ url('bill_report/pdf' . '/' . $my_total . '/' . $search) }}" class="btn btn-dark btn-md" target="_blank">
                                 Generar PDF
                             </a>
                         </div>
+                        {{--<div class="col-sm-3">
+                            <a href="javascript:void(0)" class="btn btn-dark btn-md" data-toggle="modal" data-target="#data_import_modal" title="Cargar Datos">Importar</a>
+                        </div>--}}
                     </div>
                 </div>
             </div>
@@ -44,7 +47,7 @@
                                 <td><h6 class="text-center">{{$bill->reference}}</h6></td>   
                                 <td><h6 class="text-center">{{$bill->description}}</h6></td>
                                 <td><h6 class="text-center text-uppercase">{{$bill->type}}</h6></td>                         
-                                <td><h6 class="text-center">${{$bill->amount}}</h6></td>
+                                <td><h6 class="text-center">${{number_format($bill->amount,2)}}</h6></td>
                                 <td class="text-center">
                                     <a wire:click.prevent="Details({{$bill->id}})" class="btn btn-dark mtmobile" title="Detalles">
                                         <i class="fas fa-list"></i>
@@ -72,6 +75,7 @@
     @include('livewire.bill.form')
     @include('livewire.bill.form2')
     @include('livewire.bill.detail')
+    @include('livewire.bill.data_import')
 </div>
 
 
@@ -120,6 +124,16 @@
         window.livewire.on('cover-error', msg=>{    //evento al eliminar registro
             noty(msg,2)
         });
+
+        window.livewire.on('show-data-import-modal', msg=>{ //evento para mostral modal de carga de datos
+            $('#data_import_modal').modal('show')
+        });
+
+        window.livewire.on('import-successfull', msg=>{ //evento al cargar datos correctamente
+            $('#data_import_modal').modal('hide')
+            noty(msg)
+        });
+        
     });
 
     function Confirm(id){
