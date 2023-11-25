@@ -7,7 +7,10 @@ use App\Models\Product;
 use App\Models\Office;
 use App\Models\Sale;
 use App\Models\State;
+use App\Models\Cover;
+use App\Models\Paydesk;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
@@ -16,13 +19,18 @@ use Livewire\Component;
 class Sales extends Component
 {
     public $total,$itemsQuantity,$efectivo,$change;
+    public $cov,$cov_det,$from,$to;
 
-    public function mount(){
-
+    public function mount()
+    {
         $this->efectivo = 0;
         $this->change = 0;
         $this->total = Cart::getTotal();
         $this->itemsQuantity = Cart::getTotalQuantity();
+        $this->from = Carbon::parse(Carbon::now())->format('Y-m-d') . ' 00:00:00';
+        $this->to = Carbon::parse(Carbon::now())->format('Y-m-d') . ' 23:59:59';
+        $this->cov = Cover::firstWhere('description','inventario');
+        $this->cov_det = $this->cov->details->where('cover_id',$this->cov->id)->whereBetween('created_at',[$this->from, $this->to])->first();
     }
 
     public function render()
@@ -52,36 +60,35 @@ class Sales extends Component
     ];
 
     
-    public function ScanCode($code,$sale_price,$office,$pf,$cant = 1){
-
+    public function ScanCode($code,$sale_price,$office,$pf,$cant = 1)
+    {
         $product = Product::firstWhere('code', $code);
 
-            if($product == null || empty($code) || $product->offices()->firstWhere('name',$office) == null){
+        if($product == null || empty($code) || $product->offices()->firstWhere('name',$office) == null){
 
-                $this->emit('scan-notfound', 'El producto no esta registrado');
+            $this->emit('scan-notfound', 'El producto no esta registrado');
 
-            }else{
-                
-                if($this->InCart($product->offices()->first()->pivot->id, $office)){
-
-                    $this->increaseQty($product->offices()->first()->pivot->id);
-                    return;
-                }
-
-                if($product->offices()->firstWhere('name',$office)->pivot->stock < 1){
-
-                    $this->emit('no-stock','Stock insuficiente');
-                    return;
-                }
-
-                //Cart::add($product->offices()->firstWhere('name',$office)->pivot->id,$office,$sale_price,$cant,array($product->image,$product->description,$product->id,$product->brand,$pf));
-                Cart::add($product->offices()->firstWhere('name',$office)->pivot->id,$office,$sale_price,$cant,array($product->threshing,$product->description,$product->id,$product->brand,$pf,$product->tarp));
-
-                $this->total = Cart::getTotal();
-                $this->itemsQuantity = Cart::getTotalQuantity();
-                $this->emit('scan-ok', 'Producto agregado al carrito');
-            }
+        }else{
             
+            if($this->InCart($product->offices()->first()->pivot->id, $office)){
+
+                $this->increaseQty($product->offices()->first()->pivot->id);
+                return;
+            }
+
+            if($product->offices()->firstWhere('name',$office)->pivot->stock < 1){
+
+                $this->emit('no-stock','Stock insuficiente');
+                return;
+            }
+
+            //Cart::add($product->offices()->firstWhere('name',$office)->pivot->id,$office,$sale_price,$cant,array($product->image,$product->description,$product->id,$product->brand,$pf));
+            Cart::add($product->offices()->firstWhere('name',$office)->pivot->id,$office,$sale_price,$cant,array($product->threshing,$product->description,$product->id,$product->brand,$pf,$product->tarp));
+
+            $this->total = Cart::getTotal();
+            $this->itemsQuantity = Cart::getTotalQuantity();
+            $this->emit('scan-ok', 'Producto agregado al carrito');
+        }
     }
 
     public function InCart($id, $office){     //metodo para verificar si un producto ya existe en el carrito
@@ -214,74 +221,92 @@ class Sales extends Component
         $this->emit('scan-ok', 'Carrito vacio');    //evento a ser escuchado desde el frontend
     }
 
-    public function saveSale(){
+    public function saveSale()
+    {
+        if($this->cov_det != null){
 
-        if($this->total <= 0){
+            $paydesk = Paydesk::orderBy('id', 'asc')->whereBetween('created_at', [$this->from, $this->to])->where('type','Ventas')->get();
 
-            $this->emit('sale-error', 'AGREGA PRODUCTOS AL CARRITO');
-            return;
-        }
+            if(count($paydesk) == 0){
 
-        if($this->efectivo <= 0){
+                if($this->total <= 0){
 
-            $this->emit('sale-error', 'INGRESE EL EFECTIVO');
-            return;
-        }
+                    $this->emit('sale-error', 'AGREGA PRODUCTOS AL CARRITO');
+                    return;
+                }
 
-        if($this->total > $this->efectivo){
+                if($this->efectivo <= 0){
 
-            $this->emit('sale-error', 'EL EFECTIVO ES INSUFICIENTE PARA LA COMPRA');
-            return;
-        }
+                    $this->emit('sale-error', 'INGRESE EL EFECTIVO');
+                    return;
+                }
 
-        DB::beginTransaction();
-        
-        try {
+                if($this->total > $this->efectivo){
 
-            $items = Cart::getContent();
-            $state = State::firstWhere('name','realizado');
+                    $this->emit('sale-error', 'EL EFECTIVO ES INSUFICIENTE PARA LA COMPRA');
+                    return;
+                }
 
-            foreach($items as $item){
-
-                $product = Product::find($item->attributes[2]);
+                DB::beginTransaction();
                 
-                Sale::create([
+                try {
 
-                    'quantity' => $item->quantity,
-                    'total' => ($item->price * $item->quantity),
-                    'utility' => (($item->price * $item->quantity) - ($product->cost * $item->quantity)),
-                    'cash' => $this->efectivo,
-                    'change' => $this->change,
-                    'office' => $item->name,
-                    'pf' => $item->attributes[4],
-                    'state_id' => $state->id,
-                    'user_id' => Auth()->user()->id,
-                    'product_id' => Product::find($item->attributes[2])->id
-                ]);
-                
-                $product->offices()->updateExistingPivot($product->offices()->get()->firstWhere('pivot.id',$item->id)->pivot->office_id,[
-                    'stock' => $product->offices()->get()->firstWhere('pivot.id',$item->id)->pivot->stock - $item->quantity,
-                ]);               
+                    $items = Cart::getContent();
+                    $state = State::firstWhere('name','realizado');
+
+                    foreach($items as $item){
+
+                        $product = Product::find($item->attributes[2]);
+                        
+                        Sale::create([
+
+                            'quantity' => $item->quantity,
+                            'total' => ($item->price * $item->quantity),
+                            'utility' => (($item->price * $item->quantity) - ($product->cost * $item->quantity)),
+                            'cash' => $this->efectivo,
+                            'change' => $this->change,
+                            'office' => $item->name,
+                            'pf' => $item->attributes[4],
+                            'state_id' => $state->id,
+                            'user_id' => Auth()->user()->id,
+                            'product_id' => Product::find($item->attributes[2])->id
+                        ]);
+                        
+                        $product->offices()->updateExistingPivot($product->offices()->get()->firstWhere('pivot.id',$item->id)->pivot->office_id,[
+                            'stock' => $product->offices()->get()->firstWhere('pivot.id',$item->id)->pivot->stock - $item->quantity,
+                        ]);
+                    }
+
+                    DB::commit();
+
+                    Cart::clear();
+                    $this->efectivo = 0;
+                    $this->change = 0;
+                    $this->total = Cart::getTotal();
+                    $this->itemsQuantity = Cart::getTotalQuantity();
+                    $this->emit('scan-ok', 'Venta registrada con exito');
+                    //$this->emit('print-ticket', $sale->id); //evento a ser escuchado desde el frontend
+
+                } catch (Exception $e) {    //capturar error en variable 
+                    DB::rollback();     //deshacer todas las operaciones en caso de error
+                    $this->emit('sale-error', $e->getMessage());    //evento a ser escuchado desde el frontend
+                }
+
+            }else{
+
+                $this->emit('sale-error', 'Anule las ventas del dia desde caja general primero');
+                return;
             }
 
-            DB::commit();
+        }else{
 
-            Cart::clear();
-            $this->efectivo = 0;
-            $this->change = 0;
-            $this->total = Cart::getTotal();
-            $this->itemsQuantity = Cart::getTotalQuantity();
-            $this->emit('scan-ok', 'Venta registrada con exito');
-            //$this->emit('print-ticket', $sale->id); //evento a ser escuchado desde el frontend
-
-        } catch (Exception $e) {    //capturar error en variable 
-            DB::rollback();     //deshacer todas las operaciones en caso de error
-            $this->emit('sale-error', $e->getMessage());    //evento a ser escuchado desde el frontend
+            $this->emit('sale-error', 'Se debe crear caratula del dia');
+            return;
         }
     }
 
-    public function printTicket($sale){ //metodo para imprimir tickets de venta
-
+    public function printTicket($sale)
+    { //metodo para imprimir tickets de venta
         return Redirect::to("print://$sale->id");   
     }
 }
