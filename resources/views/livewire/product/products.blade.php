@@ -5,13 +5,18 @@
                 <h4 class="card-title">
                     <b>{{$componentName}} | {{$pageTitle}}</b>
                 </h4>
-                @can('crear_producto')
-                <ul class="tabs tab-pills">
-                    <li>
-                        <a href="javascript:void(0)" class="tabmenu bg-dark" data-toggle="modal" data-target="#theModal">Agregar</a>
-                    </li>
-                </ul>
-                @endcan
+                <div class="container">
+                    <div class="row">
+                        @can('crear_producto')
+                        <div class="col-sm-3">
+                            <a href="javascript:void(0)" class="btn btn-dark btn-md" data-toggle="modal" data-target="#theModal">Agregar</a>
+                        </div>
+                        @endcan
+                        {{--<div class="col-sm-3">
+                            <a href="javascript:void(0)" class="btn btn-dark btn-md" data-toggle="modal" data-target="#data_import_modal" title="Cargar Datos">Importar</a>
+                        </div>--}}
+                    </div>
+                </div>
             </div>
             
             @include('common.searchbox')
@@ -49,8 +54,8 @@
                                 <td><h6 class="text-center">{{$product->ring}}</h6></td>
                                 <td><h6 class="text-center">{{$product->threshing}}</h6></td>
                                 <td><h6 class="text-center">{{$product->tarp}}</h6></td>
-                                <td><h6 class="text-center">${{$product->cost}}</h6></td>
-                                <td><h6 class="text-center">${{$product->price}}</h6></td>
+                                <td><h6 class="text-center">${{number_format($product->cost,2)}}</h6></td>
+                                <td><h6 class="text-center">${{number_format($product->price,2)}}</h6></td>
                                 <td><h6 class="text-center">{{$product->category}}</h6></td>
                                 <td><h6 class="text-center">{{$product->subcategory}}</h6></td>
                                 <td class="text-center">
@@ -78,6 +83,7 @@
         </div>
     </div>
     @include('livewire.product.form')  <!--formulario modal-->
+    @include('livewire.product.data_import')
 </div>
 
 <!--script de eventos provenientes del backend a ser escuchados-->
@@ -89,22 +95,41 @@
             $('#theModal').modal('hide')
             noty(msg)
         });
+
         window.livewire.on('item-updated', msg=>{    //evento para actualizar registro
             $('#theModal').modal('hide')
             noty(msg)
         });
+
         window.livewire.on('item-deleted', msg=>{    //evento para eliminar registro
             noty(msg)
         });
+
         window.livewire.on('show-modal', msg=>{ //evento para mostral modal
             $('#theModal').modal('show')
         });
+
         window.livewire.on('modal-hide', msg=>{ //evento para cerrar modal
             $('#theModal').modal('hide')
         });
+
         $('#theModal').on('shown.bs.modal', function(e){    //metodo para autofocus al campo nombre
             $('.component-name').focus()
         });
+
+        window.livewire.on('movement-error', Msg => {   //evento para los errores del componente
+            noty(Msg,2)
+        });
+
+        window.livewire.on('show-data-import-modal', msg=>{ //evento para mostral modal de carga de datos
+            $('#data_import_modal').modal('show')
+        });
+
+        window.livewire.on('import-successfull', msg=>{ //evento al cargar datos correctamente
+            $('#data_import_modal').modal('hide')
+            noty(msg)
+        });
+        
     });
 
     function Confirm(id){   //metodo para alerta de confirmacion que recibe el id
