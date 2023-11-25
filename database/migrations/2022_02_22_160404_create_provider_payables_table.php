@@ -15,8 +15,8 @@ class CreateProviderPayablesTable extends Migration
     {
         Schema::create('provider_payables', function (Blueprint $table) {
             $table->id();
-            $table->text('description',1000);
-            $table->decimal('amount',10,2);
+            $table->text('description');
+            $table->decimal('amount',60,30);
             $table->foreignId('provider_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->timestamps();
         });
