@@ -14,16 +14,18 @@
                             @can('crear_caratula')
                             <div class="col-sm-12">
                                 {{--<a href="javascript:void(0)" wire:click.prevent="CreateCover()" class="btn btn-dark btn-block {{$reportRange != 0 || count($details) > 0 ? 'disabled' : ''}}">Crear Caratula del Dia</a>--}}
-                                <a href="javascript:void(0)" onclick="Message(1)" class="btn btn-dark btn-block">Crear Caratula del Dia</a>
+                                <a href="javascript:void(0)" onclick="Message(1)" 
+                                class="btn btn-dark btn-block {{$reportRange != 0 || count($details) > 0 ? 'disabled' : ''}}"
+                                title="Crear nueva caratula para fecha actual">Crear Caratula</a>
                             </div>
                             <br>
                             @endcan
                             <div class="col-sm-12">
-                                <h6>Elija una opcion</h6>
+                                <h6>Opciones de Pagina</h6>
                                 <div class="form-group">
                                     <select wire:model="reportRange" class="form-control">
-                                        <option value="0">Caratula del dia</option>
-                                        <option value="1">Caratula por fecha</option>
+                                        <option value="0">Caratula del Dia</option>
+                                        <option value="1">Caratula por Fecha</option>
                                         <option value="2">Cambiar Fecha</option>
                                     </select>
                                 </div>

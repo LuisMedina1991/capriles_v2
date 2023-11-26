@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 
 class CoverReports extends Component
 {
-    public $componentName,$details,$reportRange,$date,$amount;
+    public $componentName,$all_cover_details,$details,$reportRange,$date,$amount;
     public $sum1,$sum2,$sum3,$sum4,$sum5,$sum6,$sum7,$sum8,$sum9,$sum10;
     public $uti,$uti_det,$date1,$date2,$date3;
 
@@ -27,6 +27,7 @@ class CoverReports extends Component
         $this->date = '';
         $this->date3 = '';
         $this->amount = '';
+        $this->all_cover_details = CoverDetail::all();
         $this->date1 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 00:00:00';
         $this->date2 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 23:59:59';
         $this->uti = Cover::firstWhere('description','utilidad acumulada');
@@ -131,34 +132,58 @@ class CoverReports extends Component
 
     public function CreateCover()
     {
-        if(count($this->details) < 1){
+        $last_utility_record = $this->uti->details->last();
+
+        if ($this->reportRange != 0) {
             
-            $covers = Cover::all();
-            
-            foreach($covers as $cover){
-
-                CoverDetail::create([
-    
-                    'cover_id' => $cover->id,
-                    'type' => $cover->type,
-                    'previus_day_balance' => $cover->balance,
-                    'ingress' => 0,
-                    'egress' => 0,
-                    'actual_balance' => $cover->balance
-    
-                ]);
-            }
-
-        }else{
-
-            $this->emit('cover-error', 'Ya se creo caratula para hoy');
+            $this->emit('cover-error', 'Seleccione la opcion "Caratula del Dia".');
             return;
+
+        } elseif ($last_utility_record->actual_balance == $last_utility_record->previus_day_balance) {
+
+            $this->emit('cover-error', 'No se ha ingresado la utilidad del dia a la ultima caratula creada.');
+            return;
+
+        } elseif (count($this->details) > 0) {
+
+            $this->emit('cover-error', 'Ya se creo caratula para hoy.');
+            return;
+
+        } else {
+
+            DB::beginTransaction();
+                    
+            try {
+
+                $covers = Cover::all();
+            
+                foreach ($covers as $cover) {
+
+                    CoverDetail::create([
+
+                        'cover_id' => $cover->id,
+                        'type' => $cover->type,
+                        'previus_day_balance' => $cover->balance,
+                        'ingress' => 0,
+                        'egress' => 0,
+                        'actual_balance' => $cover->balance
+
+                    ]);
+                }
+
+                DB::commit();
+                $this->emit('item-added','Registro Exitoso.');
+                $this->mount();
+                $this->render();
+
+            } catch (Exception $e) {
+
+                DB::rollback();
+                //$this->emit('cover-error', $e->getMessage());
+                $this->emit('cover-error', 'Algo salio mal.');
+
+            }
         }
-
-        $this->emit('item-added','Registro Exitoso');
-        $this->mount();
-        $this->render();
-
     }
 
     public function Collect(){
@@ -377,9 +402,7 @@ class CoverReports extends Component
         
         } else {
 
-            $all_details = CoverDetail::all();
-
-            $last = Carbon::parse($all_details->last()->created_at)->format('Y-m-d');
+            $last = Carbon::parse($this->all_cover_details->last()->created_at)->format('Y-m-d');
         
             if ($last == $this->date) {
 
@@ -389,7 +412,7 @@ class CoverReports extends Component
                 $fecha3 = Carbon::parse($this->date3)->format('Y-m-d'). ' 00:00:00';
                 $fecha4 = Carbon::parse($this->date3)->format('Y-m-d'). ' 23:59:59';
 
-                $target_detail = $all_details->whereBetween('created_at', [$fecha3, $fecha4]);
+                $target_detail = $this->all_cover_details->whereBetween('created_at', [$fecha3, $fecha4]);
 
                 if (count($target_detail) == 0) {
 
@@ -482,28 +505,28 @@ class CoverReports extends Component
                         }
 
                         DB::commit();
+                        $this->emit('item-added','Fecha Modificada.');
+                        $this->mount();
+                        $this->render();
 
-                    } catch (Exception) {
+                    } catch (Exception $e) {
 
                         DB::rollback();
-                        $this->emit('cover-error', 'Algo salio mal');
+                        //$this->emit('cover-error', $e->getMessage());
+                        $this->emit('cover-error', 'Algo salio mal.');
 
                     }
 
-                    $this->emit('item-added','Fecha Modificada');
-                    $this->mount();
-                    $this->render();
-
                 } else {
 
-                    $this->emit('cover-error', 'Ya existe una caratula con esa fecha');
+                    $this->emit('cover-error', 'Ya existe una caratula con esa fecha.');
                     return;
                 }
             
 
             } else {
 
-                $this->emit('cover-error', 'Solo puede cambiar fecha a la ultima caratula creada');
+                $this->emit('cover-error', 'Solo puede cambiar fecha a la ultima caratula creada.');
                 return;
 
             }
