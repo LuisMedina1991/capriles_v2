@@ -2,9 +2,9 @@
     <div class="col-sm-12">
         <div class="widget">
             <div class="widget-heading">
-                <h4 class="card-title text-center"><b>{{$componentName}}</b></h4>
+                <h4 class="card-title text-center text-uppercase"><b>{{$componentName}}</b></h4>
                 @if(count($details) > 1)
-                    <b>BALANCE DIARIO: {{number_format($sum10,2)}}</b>
+                    <b class="text-uppercase">Balance Diario: {{number_format($sum10,2)}}</b>
                 @endif
             </div>
             <div class="widget-content">
@@ -13,7 +13,8 @@
                         <div class="col">
                             @can('crear_caratula')
                             <div class="col-sm-12">
-                                <a href="javascript:void(0)" wire:click.prevent="Create()" class="btn btn-dark btn-block {{$reportRange != 0 || count($details) > 0 ? 'disabled' : ''}}">Crear Caratula del Dia</a>
+                                {{--<a href="javascript:void(0)" wire:click.prevent="CreateCover()" class="btn btn-dark btn-block {{$reportRange != 0 || count($details) > 0 ? 'disabled' : ''}}">Crear Caratula del Dia</a>--}}
+                                <a href="javascript:void(0)" onclick="Message(1)" class="btn btn-dark btn-block">Crear Caratula del Dia</a>
                             </div>
                             <br>
                             @endcan
@@ -45,25 +46,31 @@
                             </div>
                             @can('ingresar_utilidad')
                             <div class="col-sm-12">
-                                <a href="javascript:void(0)" wire:click.prevent="Collect()" class="btn btn-dark btn-block {{$reportRange != 0 || count($details) < 1 || $uti_det->actual_balance != $uti_det->previus_day_balance || $sum8 == 0 ? 'disabled' : ''}}">Ingresar Utilidad Acumulada</a>
+                                {{--<a href="javascript:void(0)" wire:click.prevent="Collect()" class="btn btn-dark btn-block {{$reportRange != 0 || count($details) < 1 || $uti_det->actual_balance != $uti_det->previus_day_balance || $sum8 == 0 ? 'disabled' : ''}}">Ingresar Utilidad Acumulada</a>--}}
+                                {{--<a href="javascript:void(0)" onclick="Message(2)" class="btn btn-dark btn-block">Ingresar Utilidad del Dia</a>--}}
                             </div>
                             <br>
                             @endcan
                             @can('revertir_utilidad')
                             <div class="col-sm-12">
-                                <a href="javascript:void(0)" wire:click.prevent="Revert()" class="btn btn-dark btn-block {{$reportRange != 0 || count($details) < 1 || $uti_det->actual_balance == $uti_det->previus_day_balance ? 'disabled' : ''}}">Revertir Utilidad Acumulada</a>
+                                {{--<a href="javascript:void(0)" wire:click.prevent="Revert()" class="btn btn-dark btn-block {{$reportRange != 0 || count($details) < 1 || $uti_det->actual_balance == $uti_det->previus_day_balance ? 'disabled' : ''}}">Revertir Utilidad Acumulada</a>--}}
+                                {{--<a href="javascript:void(0)" onclick="Message(3)" class="btn btn-dark btn-block">Revertir Utilidad del Dia</a>--}}
                             </div>
                             <br>
                             @endcan
                             @can('cambiar_fecha_caratula')
                             <div class="col-sm-12">
-                                <a href="javascript:void(0)" wire:click.prevent="ChangeDate()" class="btn btn-dark btn-block {{$reportRange != 2 || count($details) < 1 || $date == '' || $date3 == '' ? 'disabled' : ''}}">Cambiar Fecha</a>
+                                {{--<a href="javascript:void(0)" wire:click.prevent="ChangeDate()" class="btn btn-dark btn-block {{$reportRange != 2 || count($details) < 1 || $date == '' || $date3 == '' || $date == $date3 ? 'disabled' : ''}}">Cambiar Fecha</a>--}}
+                                <a href="javascript:void(0)" onclick="Message(4)" 
+                                class="btn btn-dark btn-block {{$reportRange != 2 || count($details) < 1 || $date == '' || $date3 == '' || $date == $date3 ? 'disabled' : ''}}" 
+                                title="Asignar nueva fecha a la caratula">Cambiar Fecha</a>
                             </div>
                             <br>
                             @endcan
                             @can('cerrar_mes')
                             <div class="col-sm-12">
-                                <a href="javascript:void(0)" wire:click.prevent="Close()" class="btn btn-dark btn-block {{$reportRange != 0 || count($details) < 1 ? 'disabled' : ''}}">Cerrar Mes</a>
+                                {{--<a href="javascript:void(0)" wire:click.prevent="Close()" class="btn btn-dark btn-block {{$reportRange != 0 || count($details) < 1 ? 'disabled' : ''}}">Cerrar Mes</a>--}}
+                                {{--<a href="javascript:void(0)" onclick="Message(5)" class="btn btn-dark btn-block">Cerrar Mes</a>--}}
                             </div>
                             <br>
                             @endcan
@@ -235,7 +242,6 @@
             }
         })
 
-
         window.livewire.on('report-error', Msg => {
             noty(Msg)
         });
@@ -254,5 +260,39 @@
         });
 
     })
+
+    function Message(option)
+    {
+        swal({
+
+            title: 'ADVERTENCIA',
+            text: '¿CONFIRMA LA ACCION?',
+            type: 'warning',
+            showCancelButton: true,
+            cancelButtonText: 'CERRAR',
+            cancelButtonColor: '#fff',
+            confirmButtonColor: '#3B3F5C',
+            confirmButtonText: 'ACEPTAR'
+
+        }).then(function(result){
+
+            if(result.value){
+
+                if (option == 1) {
+
+                    window.livewire.emit('CreateCover')
+
+                }
+
+                if (option == 4) {
+
+                    window.livewire.emit('ChangeCoverDate')
+
+                }
+
+                swal.close()
+            }
+        })
+    }
 
 </script>

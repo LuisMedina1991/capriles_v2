@@ -15,15 +15,14 @@ use Exception;
 use Illuminate\Support\Facades\DB;
 
 class CoverReports extends Component
-{   
-
+{
     public $componentName,$details,$reportRange,$date,$amount;
     public $sum1,$sum2,$sum3,$sum4,$sum5,$sum6,$sum7,$sum8,$sum9,$sum10;
     public $uti,$uti_det,$date1,$date2,$date3;
 
-    public function mount(){
-
-        $this->componentName = 'CARATULA';
+    public function mount()
+    {
+        $this->componentName = 'caratula';
         $this->reportRange = 0;
         $this->date = '';
         $this->date3 = '';
@@ -43,8 +42,8 @@ class CoverReports extends Component
         ->section('content');
     }
 
-    public function ReportsByDate(){
-
+    public function ReportsByDate()
+    {
         $this->sum1 = 0;
         $this->sum2 = 0;
         $this->sum3 = 0;
@@ -71,12 +70,14 @@ class CoverReports extends Component
         if($this->reportRange == 1 && $this->date == ''){
 
             $this->emit('report-error', 'Seleccione una fecha');
+            $this->details = [];
             return;
         }
 
         if($this->reportRange == 2 && ($this->date == '' || $this->date3 == '')){
 
             $this->emit('report-error', 'Seleccione ambas fechas');
+            $this->details = [];
             return;
         }
 
@@ -123,8 +124,13 @@ class CoverReports extends Component
         
     }
 
-    public function Create(){
+    protected $listeners = [
+        'CreateCover' => 'CreateCover',
+        'ChangeCoverDate' => 'ChangeCoverDate',
+    ];
 
+    public function CreateCover()
+    {
         if(count($this->details) < 1){
             
             $covers = Cover::all();
@@ -154,11 +160,6 @@ class CoverReports extends Component
         $this->render();
 
     }
-
-    /*public function Delete(){
-
-
-    }*/
 
     public function Collect(){
 
@@ -297,10 +298,10 @@ class CoverReports extends Component
 
     public function Close(){
 
-        $time_1 = now();
+        /*$time_1 = now();
         $time_2 = $time_1->copy()->endOfMonth();
 
-        if($time_1->diffInDays($time_2) == 0 || ($time_1->diffInDays($time_2) == 1 && $time_2->dayOfWeek == 7)){
+        if($time_1->diffInDays($time_2) == 0 || ($time_1->diffInDays($time_2) == 1 && $time_2->dayOfWeek == 7)){*/
 
             $cap = Cover::firstWhere('description','capital de trabajo inicial');
             $uti = Cover::firstWhere('description','utilidad acumulada');
@@ -328,147 +329,189 @@ class CoverReports extends Component
             $this->mount();
             $this->render();
 
-        }else{
+        /*}else{
 
             $this->emit('cover-error', 'No se cumplen las condiciones');
             return;
-        }
+        }*/
 
     }
 
-    public function ChangeDate(){
+    public function ChangeCoverDate()
+    {
+        $today = Carbon::today()->format('Y-m-d');
 
-        $detail = CoverDetail::all();
+        if ($this->reportRange != 2) {
 
-        $compare = Carbon::parse($detail->last()->created_at)->format('Y-m-d');
-        
-        if($compare == $this->date){
-
-            $time = Carbon::now();
-            $fecha1 = Carbon::parse($this->date)->format('Y-m-d'). ' 00:00:00';
-            $fecha2 = Carbon::parse($this->date)->format('Y-m-d'). ' 23:59:59';
-            $fecha3 = Carbon::parse($this->date3)->format('Y-m-d'). ' 00:00:00';
-            $fecha4 = Carbon::parse($this->date3)->format('Y-m-d'). ' 23:59:59';
-
-            $compare_2 = $detail->whereBetween('created_at', [$fecha3, $fecha4]);
-
-            if(count($compare_2) == 0){
-
-                $details_table = Detail::whereBetween('created_at', [$fecha1, $fecha2])->orderBy('id', 'asc')->get();
-                $incomes_table = Income::whereBetween('created_at', [$fecha1, $fecha2])->orderBy('id', 'asc')->get();
-                $sales_table = Sale::whereBetween('created_at', [$fecha1, $fecha2])->orderBy('id', 'asc')->get();
-                $transfers_table = Transfer::whereBetween('created_at', [$fecha1, $fecha2])->orderBy('id', 'asc')->get();
-                $paydesks_table = Paydesk::whereBetween('created_at', [$fecha1, $fecha2])->orderBy('id', 'asc')->get();
-                
-                DB::beginTransaction();
-                
-                try {
-
-                    if(count($details_table) > 0){
-
-                        foreach($details_table as $dt){
-
-                            $dt->update([
-                            
-                                'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                    
-                            ]);
-                        }
-                    }
-
-                    if(count($incomes_table) > 0){
-
-                        foreach($incomes_table as $it){
-
-                            $it->update([
-                            
-                                'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                    
-                            ]);
-                        }
-                    }
-
-                    if(count($sales_table) > 0){
-
-                        foreach($sales_table as $st){
-
-                            $st->update([
-                            
-                                'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                    
-                            ]);
-                        }
-                    }
-
-                    if(count($transfers_table) > 0){
-
-                        foreach($transfers_table as $tt){
-
-                            $tt->update([
-                            
-                                'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                    
-                            ]);
-                        }
-                    }
-
-                    if(count($paydesks_table) > 0){
-
-                        foreach($paydesks_table as $pt){
-
-                            $pt->update([
-                            
-                                'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                    
-                            ]);
-                        }
-                    }
-
-                    if(count($this->details) > 0){
-
-                        foreach($this->details as $cdt){
-
-                            $cdt->update([
-                            
-                                'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                    
-                            ]);
-                        }
-                    }
-
-                    DB::commit();
-
-                } catch (Exception) {
-                    DB::rollback();
-                    $this->emit('cover-error', 'Algo salio mal');
-                }
-
-                $this->emit('item-added','Fecha Modificada');
-                $this->mount();
-                $this->render();
-
-            }else{
-
-                $this->emit('cover-error', 'Ya existe una caratula con esa fecha');
-                return;
-            }
-          
-
-        }else{
-
-            $this->emit('cover-error', 'Solo puede cambiar fecha a la ultima caratula registrada');
+            $this->emit('cover-error', 'Seleccione la opcion "Cambiar Fecha".');
             return;
+
+        } elseif ($this->date == '' || $this->date3 == '') {
+
+            $this->emit('cover-error', 'Seleccione ambas fechas.');
+            return;
+        
+        } elseif (count($this->details) < 1) {
+            
+            $this->emit('cover-error', 'No se ha encontrado caratula para modificar.');
+            return;
+
+        } elseif ($this->date == $this->date3) {
+
+            $this->emit('cover-error', 'Ambas fechas son iguales.');
+            return;
+        
+        } elseif ($this->date3 > $today) {
+
+            $this->emit('cover-error', 'No se permite asignar una fecha superior a la de hoy.');
+            return;
+        
+        } elseif ($this->date > $this->date3) {
+
+            if ($this->uti_det->actual_balance == $this->uti_det->previus_day_balance) {
+
+                $this->emit('cover-error', 'No se ha ingresado la utilidad del dia.');
+                return;
+
+            }
+        
+        } else {
+
+            $all_details = CoverDetail::all();
+
+            $last = Carbon::parse($all_details->last()->created_at)->format('Y-m-d');
+        
+            if ($last == $this->date) {
+
+                $time = Carbon::now();
+                $fecha1 = Carbon::parse($this->date)->format('Y-m-d'). ' 00:00:00';
+                $fecha2 = Carbon::parse($this->date)->format('Y-m-d'). ' 23:59:59';
+                $fecha3 = Carbon::parse($this->date3)->format('Y-m-d'). ' 00:00:00';
+                $fecha4 = Carbon::parse($this->date3)->format('Y-m-d'). ' 23:59:59';
+
+                $target_detail = $all_details->whereBetween('created_at', [$fecha3, $fecha4]);
+
+                if (count($target_detail) == 0) {
+
+                    $details_table = Detail::whereBetween('created_at', [$fecha1, $fecha2])->orderBy('id', 'asc')->get();
+                    $incomes_table = Income::whereBetween('created_at', [$fecha1, $fecha2])->orderBy('id', 'asc')->get();
+                    $sales_table = Sale::whereBetween('created_at', [$fecha1, $fecha2])->orderBy('id', 'asc')->get();
+                    $transfers_table = Transfer::whereBetween('created_at', [$fecha1, $fecha2])->orderBy('id', 'asc')->get();
+                    $paydesks_table = Paydesk::whereBetween('created_at', [$fecha1, $fecha2])->orderBy('id', 'asc')->get();
+                    
+                    DB::beginTransaction();
+                    
+                    try {
+
+                        if (count($details_table) > 0) {
+
+                            foreach ($details_table as $dt) {
+
+                                $dt->update([
+                                
+                                    'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                        
+                                ]);
+                            }
+                        }
+
+                        if (count($incomes_table) > 0) {
+
+                            foreach ($incomes_table as $it) {
+
+                                $it->update([
+                                
+                                    'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                        
+                                ]);
+                            }
+                        }
+
+                        if (count($sales_table) > 0) {
+
+                            foreach ($sales_table as $st) {
+
+                                $st->update([
+                                
+                                    'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                        
+                                ]);
+                            }
+                        }
+
+                        if (count($transfers_table) > 0) {
+
+                            foreach ($transfers_table as $tt) {
+
+                                $tt->update([
+                                
+                                    'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                        
+                                ]);
+                            }
+                        }
+
+                        if (count($paydesks_table) > 0) {
+
+                            foreach ($paydesks_table as $pt) {
+
+                                $pt->update([
+                                
+                                    'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                        
+                                ]);
+                            }
+                        }
+
+                        if (count($this->details) > 0) {
+
+                            foreach ($this->details as $cdt) {
+
+                                $cdt->update([
+                                
+                                    'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                        
+                                ]);
+                            }
+                        }
+
+                        DB::commit();
+
+                    } catch (Exception) {
+
+                        DB::rollback();
+                        $this->emit('cover-error', 'Algo salio mal');
+
+                    }
+
+                    $this->emit('item-added','Fecha Modificada');
+                    $this->mount();
+                    $this->render();
+
+                } else {
+
+                    $this->emit('cover-error', 'Ya existe una caratula con esa fecha');
+                    return;
+                }
+            
+
+            } else {
+
+                $this->emit('cover-error', 'Solo puede cambiar fecha a la ultima caratula creada');
+                return;
+
+            }
         }
     }
 
-    public function resetUI(){
-
+    public function resetUI()
+    {
         $this->resetValidation();
     }
 
