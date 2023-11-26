@@ -127,6 +127,8 @@ class CoverReports extends Component
 
     protected $listeners = [
         'CreateCover' => 'CreateCover',
+        'EnterUtility' => 'EnterUtility',
+        'ReverseUtility' => 'ReverseUtility',
         'ChangeCoverDate' => 'ChangeCoverDate',
     ];
 
@@ -186,13 +188,42 @@ class CoverReports extends Component
         }
     }
 
-    public function Collect(){
+    public function EnterUtility()
+    {
+        $paydesk = Paydesk::orderBy('id', 'asc')->whereBetween('created_at', [$this->date1, $this->date2])->where('type','Ventas')->get();
 
-        if($this->reportRange == 0){
+        if ($this->reportRange != 0) {
 
-            if($this->uti_det->ingress == 0 && $this->uti_det->egress == 0){
+            $this->emit('cover-error','Seleccione la opcion "Caratula del Dia".');
+            return;
 
-                if($this->sum8 > 0){
+        } elseif (count($this->details) < 1) {
+
+            $this->emit('cover-error', 'No se ha encontrado caratula del dia.');
+            return;
+
+        } elseif ($this->sum8 == 0) {
+
+            $this->emit('cover-error', 'No se han realizado movimientos aun.');
+            return;
+
+        } elseif (count($paydesk) == 0) {
+
+            $this->emit('cover-error', 'Primero ingrese las ventas del dia desde caja general.');
+            return;
+
+        } elseif ($this->uti_det->actual_balance != $this->uti_det->previus_day_balance) {
+
+            $this->emit('cover-error','Ya se ha ingresado la utilidad neta del dia.');
+            return;
+
+        } else {
+
+            DB::beginTransaction();
+                    
+            try {
+
+                if ($this->sum8 > 0) {
 
                     $this->uti->update([
                     
@@ -206,9 +237,9 @@ class CoverReports extends Component
                         'actual_balance' => $this->uti_det->actual_balance + $this->sum8
             
                     ]);
-    
-                }else{
-    
+        
+                } else {
+        
                     $this->uti->update([
                 
                         'balance' => $this->uti->balance + $this->sum8
@@ -221,32 +252,46 @@ class CoverReports extends Component
                         'actual_balance' => $this->uti_det->actual_balance + $this->sum8
             
                     ]);
-    
+        
                 }
-    
-                $this->emit('item-added','Registro Exitoso');
+        
+                DB::commit();
+                $this->emit('item-added','Registro Exitoso.');
                 $this->mount();
                 $this->render();
-                
-            }else{
 
-                $this->emit('cover-error','Ya se ingreso la utilidad acumulada del dia');
-                return;
+            } catch (Exception $e) {
+
+                DB::rollback();
+                //$this->emit('cover-error', $e->getMessage());
+                $this->emit('cover-error', 'Algo salio mal.');
+
             }
-
-        }else{
-
-            $this->emit('cover-error','No se puede alterar fechas pasadas');
-            return;
         }
-
     }
 
-    public function Revert(){
+    public function ReverseUtility()
+    {
+        if ($this->reportRange != 0) {
 
-        if($this->reportRange == 0){
+            $this->emit('cover-error','Seleccione la opcion "Caratula del Dia".');
+            return;
 
-            if($this->uti_det->previus_day_balance != $this->uti_det->actual_balance){
+        } elseif (count($this->details) < 1) {
+
+            $this->emit('cover-error', 'No se ha encontrado caratula del dia.');
+            return;
+
+        } elseif ($this->uti_det->actual_balance == $this->uti_det->previus_day_balance) {
+
+            $this->emit('cover-error','No se ha ingresado la utilidad neta del dia aun.');
+            return;
+
+        } else {
+
+            DB::beginTransaction();
+                    
+            try {
 
                 $this->uti->update([
                     
@@ -261,23 +306,20 @@ class CoverReports extends Component
                     'actual_balance' => $this->uti_det->previus_day_balance
         
                 ]);
-    
+                
+                DB::commit();
                 $this->emit('item-added','Registro Exitoso');
                 $this->mount();
                 $this->render();
-                
-            }else{
 
-                $this->emit('cover-error','No hay nada que revertir');
-                return;
+            } catch (Exception $e) {
+
+                DB::rollback();
+                //$this->emit('cover-error', $e->getMessage());
+                $this->emit('cover-error', 'Algo salio mal.');
+
             }
-
-        }else{
-
-            $this->emit('cover-error','No se puede alterar fechas pasadas');
-            return;
         }
-
     }
 
     public function Force_Balance(){
@@ -391,14 +433,10 @@ class CoverReports extends Component
             $this->emit('cover-error', 'No se permite asignar una fecha superior a la de hoy.');
             return;
         
-        } elseif ($this->date > $this->date3) {
+        } elseif (($this->date > $this->date3) && ($this->uti_det->actual_balance == $this->uti_det->previus_day_balance)) {
 
-            if ($this->uti_det->actual_balance == $this->uti_det->previus_day_balance) {
-
-                $this->emit('cover-error', 'No se ha ingresado la utilidad del dia.');
-                return;
-
-            }
+            $this->emit('cover-error', 'No se ha ingresado la utilidad del dia.');
+            return;
         
         } else {
 

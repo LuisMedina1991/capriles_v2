@@ -46,23 +46,31 @@
                                     <input type="text" wire:model="date3" class="form-control flatpickr" placeholder="Click para elegir">
                                 </div>
                             </div>
+                            @if($uti_det)
+                            @if($uti_det->actual_balance == $uti_det->previus_day_balance)
                             @can('ingresar_utilidad')
                             <div class="col-sm-12">
-                                {{--<a href="javascript:void(0)" wire:click.prevent="Collect()" class="btn btn-dark btn-block {{$reportRange != 0 || count($details) < 1 || $uti_det->actual_balance != $uti_det->previus_day_balance || $sum8 == 0 ? 'disabled' : ''}}">Ingresar Utilidad Acumulada</a>--}}
-                                {{--<a href="javascript:void(0)" onclick="Message(2)" class="btn btn-dark btn-block">Ingresar Utilidad del Dia</a>--}}
+                                {{--<a href="javascript:void(0)" wire:click.prevent="EnterUtility()" class="btn btn-dark btn-block {{$reportRange != 0 || count($details) < 1 || $sum8 == 0 || $uti_det->actual_balance != $uti_det->previus_day_balance ? 'disabled' : ''}}">Ingresar Utilidad Acumulada</a>--}}
+                                <a href="javascript:void(0)" onclick="Message(2)" 
+                                class="btn btn-dark btn-block {{$reportRange != 0 || count($details) < 1 || $sum8 == 0 || $uti_det->actual_balance != $uti_det->previus_day_balance ? 'disabled' : ''}}"
+                                title="Ingresar utilidad neta del dia">Ingresar Utilidad</a>
                             </div>
-                            <br>
                             @endcan
+                            @else
                             @can('revertir_utilidad')
                             <div class="col-sm-12">
-                                {{--<a href="javascript:void(0)" wire:click.prevent="Revert()" class="btn btn-dark btn-block {{$reportRange != 0 || count($details) < 1 || $uti_det->actual_balance == $uti_det->previus_day_balance ? 'disabled' : ''}}">Revertir Utilidad Acumulada</a>--}}
-                                {{--<a href="javascript:void(0)" onclick="Message(3)" class="btn btn-dark btn-block">Revertir Utilidad del Dia</a>--}}
+                                {{--<a href="javascript:void(0)" wire:click.prevent="ReverseUtility()" class="btn btn-dark btn-block {{$reportRange != 0 || count($details) < 1 || $uti_det->actual_balance == $uti_det->previus_day_balance ? 'disabled' : ''}}">Revertir Utilidad Acumulada</a>--}}
+                                <a href="javascript:void(0)" onclick="Message(3)" 
+                                class="btn btn-dark btn-block {{$reportRange != 0 || count($details) < 1 || $uti_det->actual_balance == $uti_det->previus_day_balance ? 'disabled' : ''}}"
+                                title="Revertir el ingreso de utilidad neta del dia">Revertir Utilidad</a>
                             </div>
-                            <br>
                             @endcan
+                            @endif
+                            @endif
+                            <br>
                             @can('cambiar_fecha_caratula')
                             <div class="col-sm-12">
-                                {{--<a href="javascript:void(0)" wire:click.prevent="ChangeDate()" class="btn btn-dark btn-block {{$reportRange != 2 || count($details) < 1 || $date == '' || $date3 == '' || $date == $date3 ? 'disabled' : ''}}">Cambiar Fecha</a>--}}
+                                {{--<a href="javascript:void(0)" wire:click.prevent="ChangeCoverDate()" class="btn btn-dark btn-block {{$reportRange != 2 || count($details) < 1 || $date == '' || $date3 == '' || $date == $date3 ? 'disabled' : ''}}">Cambiar Fecha</a>--}}
                                 <a href="javascript:void(0)" onclick="Message(4)" 
                                 class="btn btn-dark btn-block {{$reportRange != 2 || count($details) < 1 || $date == '' || $date3 == '' || $date == $date3 ? 'disabled' : ''}}" 
                                 title="Asignar nueva fecha a la caratula">Cambiar Fecha</a>
@@ -283,6 +291,18 @@
                 if (option == 1) {
 
                     window.livewire.emit('CreateCover')
+
+                }
+
+                if (option == 2) {
+
+                    window.livewire.emit('EnterUtility')
+
+                }
+
+                if (option == 3) {
+
+                    window.livewire.emit('ReverseUtility')
 
                 }
 
