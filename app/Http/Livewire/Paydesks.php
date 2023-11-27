@@ -34,7 +34,7 @@ class Paydesks extends Component
 
     public $description,$action,$amount,$search,$selected_id,$pageTitle,$componentName,$i_total,$e_total,$my_total;
     public $type,$temp,$temp1,$temp2,$temp3,$temp4,$details,$balance,$from,$to;
-    public $gen,$gen_det,$reportRange,$reportType,$dateFrom,$dateTo,$details_2;
+    public $gen,$gen_det,$reportRange,$reportType,$dateFrom,$dateTo,$details_2,$transaction_types;
     public $dr1,$dr2,$dr3,$chc1,$chc2,$chc3;
     private $pagination = 40;
 
@@ -57,8 +57,8 @@ class Paydesks extends Component
         $this->reportType = 0;
         $this->balance = 0;
         $this->my_total = 0;
-        //$this->i_total = 0;
-        //$this->e_total = 0;
+        $this->i_total = 0;
+        $this->e_total = 0;
         $this->from = Carbon::parse(Carbon::now())->format('Y-m-d') . ' 00:00:00';
         $this->to = Carbon::parse(Carbon::now())->format('Y-m-d') . ' 23:59:59';
         $this->gen = Cover::firstWhere('description',$this->componentName);
@@ -69,11 +69,34 @@ class Paydesks extends Component
         $this->chc1 = 'Elegir';
         $this->chc2 = 'Elegir';
         $this->chc3 = '';
+        $this->transaction_types = [
+            ['name' => 'gastos de importacion', 'alias' => 'Mercaderia en transito'],
+            ['name' => 'Ventas', 'alias' => 'Ventas'],
+            ['name' => 'caja general', 'alias' => 'Variados'],
+            ['name' => 'clientes por cobrar', 'alias' => 'Clientes por Cobrar'],
+            ['name' => 'cheques por cobrar', 'alias' => 'Cheques por cobrar'],
+            ['name' => 'otros por cobrar', 'alias' => 'Otros por Cobrar'],
+            ['name' => 'deposito/retiro', 'alias' => 'Depositos/Retiros'],
+            ['name' => 'proveedores por pagar', 'alias' => 'Proveedores por Pagar'],
+            ['name' => 'consignaciones', 'alias' => 'Consignaciones'],
+            ['name' => 'otros por pagar', 'alias' => 'Otros por Pagar'],
+            ['name' => 'anticreticos', 'alias' => 'Anticreticos'],
+            ['name' => 'facturas/impuestos', 'alias' => 'Facturas/Impuestos'],
+            ['name' => 'otros proveedores', 'alias' => 'Otros Proveedores'],
+            ['name' => 'gimnasio', 'alias' => 'Gimnasio'],
+            ['name' => 'utilidad', 'alias' => 'Utilidad'],
+            ['name' => 'cambio de llantas', 'alias' => 'Cambio de LLantas'],
+            ['name' => 'diferencia por t/c', 'alias' => 'Diferencia por T/C'],
+            ['name' => 'comisiones', 'alias' => 'Comisiones'],
+            ['name' => 'perdida por devolucion', 'alias' => 'Perdida por Devolucion'],
+            ['name' => 'gastos importadora', 'alias' => 'Gastos Reales'],
+            ['name' => 'gastos gorky', 'alias' => 'Gastos Gorky'],
+            ['name' => 'gastos construccion', 'alias' => 'Gastos Construccion']
+        ];
     }
 
     public function render()
-    {   
-
+    {
         $this->ReportsByDate();
         
         return view('livewire.paydesk.paydesks', [
@@ -158,10 +181,10 @@ class Paydesks extends Component
 
                 $this->my_total = $this->details_2->sum('amount');
             }
-
-            
         }
 
+        $this->i_total = $this->details_2->where('action','ingreso')->sum('amount');
+        $this->e_total = $this->details_2->where('action','egreso')->sum('amount');
 
     }
 
@@ -186,7 +209,7 @@ class Paydesks extends Component
 
         if(CheckReceivable::firstWhere('id',$id) != null){
 
-            $this->balance = CheckReceivable::firstWhere('id',$id)->amount;
+            $this->balance = floatval(CheckReceivable::firstWhere('id',$id)->amount);
             $this->temp3 = CheckReceivable::firstWhere('id',$id)->number;
             $this->temp = Bank::firstWhere('id',CheckReceivable::firstWhere('id',$id)->bank_id)->description;
 
@@ -212,7 +235,7 @@ class Paydesks extends Component
 
                 if(Payable::firstWhere('id',$id) != null){
 
-                    $this->balance = Payable::firstWhere('id',$id)->amount;
+                    $this->balance = floatval(Payable::firstWhere('id',$id)->amount);
                     $this->temp2 = Payable::firstWhere('id',$id)->description;
         
                 }else{
@@ -251,7 +274,7 @@ class Paydesks extends Component
 
                 if(OtherProvider::firstWhere('id',$id) != null){
 
-                    $this->balance = OtherProvider::firstWhere('id',$id)->amount;
+                    $this->balance = floatval(OtherProvider::firstWhere('id',$id)->amount);
                     $this->temp2 = OtherProvider::firstWhere('id',$id)->description;
         
                 }else{
@@ -266,7 +289,7 @@ class Paydesks extends Component
 
                 if(Bill::firstWhere('id',$id) != null){
 
-                    $this->balance = Bill::firstWhere('id',$id)->amount;
+                    $this->balance = floatval(Bill::firstWhere('id',$id)->amount);
                     $this->temp2 = Bill::firstWhere('id',$id)->description;
         
                 }else{
@@ -281,7 +304,7 @@ class Paydesks extends Component
 
                 if($this->action == 'ingreso' && $this->temp1 != 'Elegir'){
 
-                    $this->balance = Import::firstWhere('id',$id)->amount;
+                    $this->balance = floatval(Import::firstWhere('id',$id)->amount);
                 }
 
             break;
@@ -298,7 +321,7 @@ class Paydesks extends Component
 
                 if(Anticretic::firstWhere('id',$id) != null){
 
-                    $this->balance = Anticretic::firstWhere('id',$id)->amount;
+                    $this->balance = floatval(Anticretic::firstWhere('id',$id)->amount);
         
                 }else{
         
@@ -311,7 +334,7 @@ class Paydesks extends Component
 
                 if(OtherReceivable::firstWhere('id',$id) != null){
 
-                    $this->balance = OtherReceivable::firstWhere('id',$id)->amount;
+                    $this->balance = floatval(OtherReceivable::firstWhere('id',$id)->amount);
         
                 }else{
         
@@ -324,7 +347,7 @@ class Paydesks extends Component
 
                 if(CostumerReceivable::firstWhere('id',$id) != null){
 
-                    $this->balance = CostumerReceivable::firstWhere('id',$id)->amount;
+                    $this->balance = floatval(CostumerReceivable::firstWhere('id',$id)->amount);
         
                 }else{
         
@@ -337,7 +360,7 @@ class Paydesks extends Component
 
                 if(ProviderPayable::firstWhere('id',$id) != null){
 
-                    $this->balance = ProviderPayable::firstWhere('id',$id)->amount;
+                    $this->balance = floatval(ProviderPayable::firstWhere('id',$id)->amount);
         
                 }else{
         
@@ -350,7 +373,7 @@ class Paydesks extends Component
 
                 if(Appropriation::firstWhere('id',$id) != null){
 
-                    $this->balance = Appropriation::firstWhere('id',$id)->amount;
+                    $this->balance = floatval(Appropriation::firstWhere('id',$id)->amount);
         
                 }else{
         
@@ -554,63 +577,77 @@ class Paydesks extends Component
                             
                                                 ]);
 
+                                                $detail = $debt->details()->create([
+                
+                                                    'description' => $this->description,
+                                                    'amount' => $this->amount,
+                                                    'previus_balance' => 0,
+                                                    'actual_balance' => $this->amount
+                                                ]);
+
                                                 $paydesk->update([
 
-                                                    'relation' => $debt->id
+                                                    'relation' => $detail->id
                                     
                                                 ]);
                         
                                             }else{
                         
-                                                $anticretic = Anticretic::find($this->temp1);
+                                                $debt = Anticretic::find($this->temp1);
                         
-                                                $det = $anticretic->details()->create([
+                                                $detail = $debt->details()->create([
                         
                                                     'description' => $this->description,
                                                     'amount' => $this->amount,
-                                                    'previus_balance' => $this->balance,
-                                                    'actual_balance' => $this->balance + $this->amount
+                                                    'previus_balance' => $debt->amount,
+                                                    'actual_balance' => $debt->amount + $this->amount
                                                 ]);
                         
-                                                $anticretic->update([
+                                                $debt->update([
                                     
-                                                    'amount' => $this->balance + $this->amount
+                                                    'amount' => $debt->amount + $this->amount
                                         
                                                 ]);
 
                                                 $paydesk->update([
 
-                                                    'relation' => $det->id
+                                                    'relation' => $detail->id
                                     
                                                 ]);
                     
                                             }
+
+                                        } else {
+
+                                            $this->addError('temp', 'Seleccione una opcion');
+                                            return;
+
                                         }
                 
                 
                                     }else{
                 
-                                        $anticretic = Anticretic::find($this->temp1);
+                                        $debt = Anticretic::find($this->temp1);
                 
-                                        $detail = $anticretic->details()->create([
+                                        $detail = $debt->details()->create([
                 
                                             'description' => $this->description,
                                             'amount' => $this->amount,
-                                            'previus_balance' => $this->balance,
-                                            'actual_balance' => $this->balance - $this->amount
+                                            'previus_balance' => $debt->amount,
+                                            'actual_balance' => $debt->amount - $this->amount
                                         ]);
                 
-                                        //if($this->amount < $this->balance){
+                                        //if($this->amount < $debt->amount){
                 
-                                            $anticretic->update([
+                                            $debt->update([
                             
-                                                'amount' => $this->balance - $this->amount
+                                                'amount' => $debt->amount - $this->amount
                                     
                                             ]);
                 
                                         /*}else{
                 
-                                            $anticretic->delete();
+                                            $debt->delete();
                                         }*/
                 
                                         $cov->update([
@@ -861,11 +898,11 @@ class Paydesks extends Component
                 
                                         $check = CheckReceivable::find($this->chc2);
                 
-                                        if($this->amount <= $this->balance){
+                                        if($this->amount <= $check->amount){
 
                                             $debt = $check->update([
                 
-                                                'amount' => $this->balance - $this->amount
+                                                'amount' => $check->amount - $this->amount
                     
                                             ]);
 
@@ -875,8 +912,8 @@ class Paydesks extends Component
                 
                                                     'description' => $this->description,
                                                     'amount' => $this->amount,
-                                                    'previus_balance' => $this->balance,
-                                                    'actual_balance' => $this->balance - $this->amount
+                                                    'previus_balance' => $check->amount,
+                                                    'actual_balance' => $check->amount - $this->amount
                                                     
                                                 ]);
         
@@ -1047,13 +1084,13 @@ class Paydesks extends Component
                     
                                                     'description' => $this->description,
                                                     'amount' => $this->amount,
-                                                    'previus_balance' => $this->balance,
-                                                    'actual_balance' => $this->balance + $this->amount
+                                                    'previus_balance' => $debt->amount,
+                                                    'actual_balance' => $debt->amount + $this->amount
                                                 ]);
                     
                                                 $debt->update([
                                 
-                                                    'amount' => $this->balance + $this->amount
+                                                    'amount' => $debt->amount + $this->amount
                                         
                                                 ]);
 
@@ -1073,13 +1110,13 @@ class Paydesks extends Component
 
                                             'description' => $this->description,
                                             'amount' => $this->amount,
-                                            'previus_balance' => $this->balance,
-                                            'actual_balance' => $this->balance - $this->amount
+                                            'previus_balance' => $debt->amount,
+                                            'actual_balance' => $debt->amount - $this->amount
                                         ]);
 
                                         $debt->update([
                             
-                                            'amount' => $this->balance - $this->amount
+                                            'amount' => $debt->amount - $this->amount
                                 
                                         ]);
                 
@@ -1572,10 +1609,11 @@ class Paydesks extends Component
                     $this->mount();
                     $this->render();
 
-                } catch (Exception) {
+                } catch (Exception $e) {
                     
                     DB::rollback();
-                    $this->emit('movement-error', 'Algo salio mal');
+                    $this->emit('movement-error', $e->getMessage());
+                    //$this->emit('movement-error', 'Algo salio mal');
                 }
 
         }else{
@@ -1592,7 +1630,7 @@ class Paydesks extends Component
         $this->description = $paydesk->description;
         $this->action = $paydesk->action;
         $this->type = $paydesk->type;
-        $this->amount = $paydesk->amount;
+        $this->amount = number_format($paydesk->amount,2);
         
         $this->emit('show-modal2', 'Abrir Modal');
 
@@ -2106,11 +2144,19 @@ class Paydesks extends Component
 
                                 case 'anticreticos':
 
-                                    $debt = Anticretic::find($paydesk->relation);
+                                    $det = Detail::find($paydesk->relation);
 
-                                    if($debt != null){
+                                    if($det != null){
 
-                                        if(count($debt->details) < 1){
+                                        $debt = Anticretic::find($det->detailable_id);
+
+                                        if(($debt->amount - $det->amount) >= 0){
+
+                                            $debt->update([
+                                
+                                                'amount' => $debt->amount - $det->amount
+                                
+                                            ]);
 
                                             $cov->update([
                                 
@@ -2125,45 +2171,18 @@ class Paydesks extends Component
                                 
                                             ]);
 
-                                            $debt->delete();
+                                            $det->delete();
 
                                         }else{
 
-                                            $this->emit('paydesk-error', 'La deuda inicial ha sufrido cambios. Elimine esos movimientos primero.');
+                                            $this->emit('paydesk-error', 'El saldo quedara negativo. Debe eliminar movimientos anteriores primero.');
                                             return;
                                         }
 
                                     }else{
 
-                                        $det = Detail::find($paydesk->relation);
-
-                                        if($det != null){
-
-                                            $payable = Anticretic::find($det->detailable_id);
-
-                                            $payable->update([
-
-                                                'amount' => $payable->amount - $det->amount
-                                            ]);
-
-                                            $cov->update([
-                                
-                                                'balance' => $cov->balance - $det->amount                       
-                                            ]);
-                        
-                                            $cov_det->update([
-                        
-                                                'ingress' => $cov_det->ingress - $det->amount,
-                                                'actual_balance' => $cov_det->actual_balance - $det->amount
-                                            ]);
-
-                                            $det->delete();
-
-                                        }else{
-
-                                            $this->emit('paydesk-error', 'Error desconocido al eliminar');
-                                            return;
-                                        }
+                                        $this->emit('paydesk-error', 'Error desconocido al eliminar');
+                                        return;
                                     }
                                     
                                     $this->resetUI();

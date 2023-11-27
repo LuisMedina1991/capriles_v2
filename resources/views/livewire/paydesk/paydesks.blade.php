@@ -37,9 +37,12 @@
                     <div class="form-group">
                         <select wire:model="reportType" class="form-control">
                             <option value="0">Reporte General</option>
-                            @foreach ($covers as $cover)
-                                <option value="{{$cover->description}}">{{$cover->description}}</option>
+                            @foreach ($transaction_types as $transaction_type)
+                                <option value="{{$transaction_type['name']}}">{{$transaction_type['alias']}}</option>
                             @endforeach
+                            {{--@foreach ($covers as $cover)
+                                <option value="{{$cover->description}}">{{$cover->description}}</option>
+                            @endforeach--}}
                         </select>
                     </div>
                 </div>
@@ -60,6 +63,14 @@
                     <a href="{{ url('paydesk_report/pdf' . '/' . $reportRange . '/' . $reportType . '/' . $my_total . '/' . $dateFrom . '/' . $dateTo) }}" class="btn btn-dark btn-block {{count($details_2) < 1 ? 'disabled' : ''}}" target="_blank">
                         Generar PDF
                     </a>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm-6 text-center">
+                    <h5><b>Total Ingresos: ${{ number_format(($i_total),2)}}</b></h5>
+                </div>
+                <div class="col-sm-6 text-center">
+                    <h5><b>Total Egresos: ${{ number_format(($e_total),2)}}</b></h5>
                 </div>
             </div>
             <div class="widget-content">
