@@ -1212,46 +1212,51 @@ class Paydesks extends Component
                                 case 'consignaciones': 
                                     
                                     $app = Appropriation::find($this->temp2);
+
+                                    if($this->amount <= $app->amount){
                 
-                                    $detail = $app->details()->create([
-                
-                                        'description' => $this->description,
-                                        'amount' => $this->amount,
-                                        'previus_balance' => $this->balance,
-                                        'actual_balance' => $this->balance - $this->amount
-                                    ]);
-                                    
-                                    //if($this->balance > $this->amount){
-                
-                                        $app->update([
-                
-                                            'amount' => $this->balance - $this->amount
+                                        $detail = $app->details()->create([
                     
+                                            'description' => $this->description,
+                                            'amount' => $this->amount,
+                                            'previus_balance' => $app->amount,
+                                            'actual_balance' => $app->amount - $this->amount
                                         ]);
-                
-                                    /*}else{
-                
-                                        $app->delete();
-                                    }*/
-                
-                                    $cov->update([
-                            
-                                        'balance' => $cov->balance - $this->amount
-                        
-                                    ]);
-                
-                                    $cov_det->update([
+                    
+                                        if ($detail) {
 
-                                        'egress' => $cov_det->egress + $this->amount,
-                                        'actual_balance' => $cov_det->actual_balance - $this->amount
+                                            $app->update([
+                
+                                                'amount' => $app->amount - $this->amount
                         
-                                    ]);
-
-                                    $paydesk->update([
-
-                                        'relation' => $detail->id
+                                            ]);
                         
-                                    ]);
+                                            $cov->update([
+                                    
+                                                'balance' => $cov->balance - $this->amount
+                                
+                                            ]);
+                        
+                                            $cov_det->update([
+    
+                                                'egress' => $cov_det->egress + $this->amount,
+                                                'actual_balance' => $cov_det->actual_balance - $this->amount
+                                
+                                            ]);
+    
+                                            $paydesk->update([
+    
+                                                'relation' => $detail->id
+                                
+                                            ]);
+
+                                        }
+
+                                    }else{
+
+                                        $this->emit('movement-error','El pago es mayor a la deuda');
+                                        return;
+                                    }
                 
                                 break;
                 
