@@ -628,47 +628,54 @@ class Paydesks extends Component
                                     }else{
                 
                                         $debt = Anticretic::find($this->temp1);
+
+                                        if($this->amount <= $debt->amount){
                 
-                                        $detail = $debt->details()->create([
-                
-                                            'description' => $this->description,
-                                            'amount' => $this->amount,
-                                            'previus_balance' => $debt->amount,
-                                            'actual_balance' => $debt->amount - $this->amount
-                                        ]);
-                
-                                        //if($this->amount < $debt->amount){
-                
-                                            $debt->update([
-                            
-                                                'amount' => $debt->amount - $this->amount
-                                    
+                                            $detail = $debt->details()->create([
+                    
+                                                'description' => $this->description,
+                                                'amount' => $this->amount,
+                                                'previus_balance' => $debt->amount,
+                                                'actual_balance' => $debt->amount - $this->amount
                                             ]);
-                
-                                        /*}else{
-                
-                                            $debt->delete();
-                                        }*/
-                
-                                        $cov->update([
+                    
+                                            //if($this->amount < $debt->amount){
+                    
+                                                $debt->update([
+                                
+                                                    'amount' => $debt->amount - $this->amount
+                                        
+                                                ]);
+                    
+                                            /*}else{
+                    
+                                                $debt->delete();
+                                            }*/
+                    
+                                            $cov->update([
+                                
+                                                'balance' => $cov->balance - $this->amount
+                                
+                                            ]);
+                                
+                                            $cov_det->update([
                             
-                                            'balance' => $cov->balance - $this->amount
-                            
-                                        ]);
-                            
-                                        $cov_det->update([
-                        
-                                            'egress' => $cov_det->egress + $this->amount,
-                                            'actual_balance' => $cov_det->actual_balance - $this->amount
-                            
-                                        ]);
+                                                'egress' => $cov_det->egress + $this->amount,
+                                                'actual_balance' => $cov_det->actual_balance - $this->amount
+                                
+                                            ]);
 
-                                        $paydesk->update([
+                                            $paydesk->update([
 
-                                            'relation' => $detail->id
-                            
-                                        ]);
-                
+                                                'relation' => $detail->id
+                                
+                                            ]);
+
+                                        }else{
+
+                                            $this->emit('movement-error','El pago es mayor a la deuda');
+                                            return;
+                                        }
                                     }
                 
                                 break;
@@ -984,11 +991,11 @@ class Paydesks extends Component
                 
                                         $costumer = CostumerReceivable::find($this->temp2);
                 
-                                        if($this->amount <= $this->balance){
+                                        if($this->amount <= $costumer->amount){
 
                                             $update = $costumer->update([
                 
-                                                'amount' => $this->balance - $this->amount
+                                                'amount' => $costumer->amount - $this->amount
                         
                                             ]);
 
@@ -998,8 +1005,8 @@ class Paydesks extends Component
                 
                                                     'description' => $this->description,
                                                     'amount' => $this->amount,
-                                                    'previus_balance' => $this->balance,
-                                                    'actual_balance' => $this->balance - $this->amount
+                                                    'previus_balance' => $costumer->amount,
+                                                    'actual_balance' => $costumer->amount - $this->amount
                                                 ]);
 
                                                 $cov->update([
@@ -1106,38 +1113,46 @@ class Paydesks extends Component
                 
                                         $debt = Bill::find($this->temp1);
 
-                                        $detail = $debt->details()->create([
+                                        if($this->amount <= $debt->amount){
 
-                                            'description' => $this->description,
-                                            'amount' => $this->amount,
-                                            'previus_balance' => $debt->amount,
-                                            'actual_balance' => $debt->amount - $this->amount
-                                        ]);
+                                            $detail = $debt->details()->create([
 
-                                        $debt->update([
-                            
-                                            'amount' => $debt->amount - $this->amount
+                                                'description' => $this->description,
+                                                'amount' => $this->amount,
+                                                'previus_balance' => $debt->amount,
+                                                'actual_balance' => $debt->amount - $this->amount
+                                            ]);
+
+                                            $debt->update([
                                 
-                                        ]);
-                
-                                        $cov->update([
+                                                'amount' => $debt->amount - $this->amount
+                                    
+                                            ]);
+                    
+                                            $cov->update([
+                                
+                                                'balance' => $cov->balance - $this->amount
+                                
+                                            ]);
+                                
+                                            $cov_det->update([
                             
-                                            'balance' => $cov->balance - $this->amount
-                            
-                                        ]);
-                            
-                                        $cov_det->update([
-                        
-                                            'egress' => $cov_det->egress + $this->amount,
-                                            'actual_balance' => $cov_det->actual_balance - $this->amount
-                            
-                                        ]);
+                                                'egress' => $cov_det->egress + $this->amount,
+                                                'actual_balance' => $cov_det->actual_balance - $this->amount
+                                
+                                            ]);
 
-                                        $paydesk->update([
+                                            $paydesk->update([
 
-                                            'relation' => $detail->id
-                            
-                                        ]);
+                                                'relation' => $detail->id
+                                
+                                            ]);
+
+                                        }else{
+
+                                            $this->emit('movement-error','El pago es mayor a la deuda');
+                                            return;
+                                        }
 
                                     }
                 
