@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Livewire\WithFileUploads;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\BillsImport;
+use Illuminate\Validation\Rule;
 
 class Bills extends Component
 {
@@ -92,7 +93,9 @@ class Bills extends Component
 
                 'reference' => 'required|min:5|max:45',
                 'description' => 'required|min:10|max:255',
-                'type' => 'not_in:Elegir',
+                'type' => ['not_in:Elegir',Rule::unique('bills','type')->where(function ($query) {
+                    return $query->where('type','acumulativa');
+                })],
                 'amount' => 'required|numeric'
             ];
 
@@ -105,6 +108,7 @@ class Bills extends Component
                 'description.min' => 'La descripcion debe contener al menos 10 caracteres',
                 'description.max' => 'La descripcion debe contener 255 caracteres como maximo',
                 'type.not_in' => 'Seleccione una opcion',
+                'type.unique' => 'Ya existe acumulado mensual',
                 'amount.required' => 'El monto es requerido',
                 'amount.numeric' => 'Este campo solo admite numeros'
             ];
