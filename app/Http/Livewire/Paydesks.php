@@ -817,22 +817,22 @@ class Paydesks extends Component
                 
                                         $other = OtherReceivable::find($this->temp1);
                 
-                                        if($this->amount <= $this->balance){
+                                        if($this->amount <= $other->amount){
 
-                                            $debt = $other->update([
+                                            $detail = $other->details()->create([
                 
-                                                'amount' => $this->balance - $this->amount
-                    
+                                                'description' => $this->description,
+                                                'amount' => $this->amount,
+                                                'previus_balance' => $other->amount,
+                                                'actual_balance' => $other->amount - $this->amount
                                             ]);
 
-                                            if($debt){
+                                            if($detail){
 
-                                                $detail = $other->details()->create([
+                                                $other->update([
                 
-                                                    'description' => $this->description,
-                                                    'amount' => $this->amount,
-                                                    'previus_balance' => $this->balance,
-                                                    'actual_balance' => $this->balance - $this->amount
+                                                    'amount' => $other->amount - $this->amount
+                        
                                                 ]);
                         
                                                 $cov->update([
