@@ -16,12 +16,12 @@ class CreateDetailsTable extends Migration
         Schema::create('details', function (Blueprint $table) {
 
             $table->id();
-            $table->text('description',1000);
-            $table->decimal('amount',10,2);
-            $table->decimal('previus_balance',10,2);
-            $table->decimal('actual_balance',10,2);
+            $table->text('description');
+            $table->decimal('amount',60,30);
+            $table->decimal('previus_balance',60,30);
+            $table->decimal('actual_balance',60,30);
             $table->unsignedBigInteger('detailable_id');
-            $table->string('detailable_type',45);
+            $table->string('detailable_type');
             $table->timestamps();
         });
     }
