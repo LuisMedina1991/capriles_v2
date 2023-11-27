@@ -10,13 +10,14 @@ use App\Models\Income;
 use App\Models\Paydesk;
 use App\Models\Sale;
 use App\Models\Transfer;
+use App\Models\Bill;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
 
 class CoverReports extends Component
 {
-    public $componentName,$all_cover_details,$details,$reportRange,$date,$amount;
+    public $componentName,$all_cover_details,$details,$reportRange,$date,$end_month_option,$amount;
     public $sum1,$sum2,$sum3,$sum4,$sum5,$sum6,$sum7,$sum8,$sum9,$sum10;
     public $uti,$uti_det,$date1,$date2,$date3;
 
@@ -27,6 +28,7 @@ class CoverReports extends Component
         $this->date = '';
         $this->date3 = '';
         $this->amount = '';
+        $this->end_month_option = 'Elegir';
         $this->all_cover_details = CoverDetail::all();
         $this->date1 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 00:00:00';
         $this->date2 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 23:59:59';
@@ -70,20 +72,25 @@ class CoverReports extends Component
 
         if($this->reportRange == 1 && $this->date == ''){
 
-            $this->emit('report-error', 'Seleccione una fecha');
+            $this->emit('report-error', 'Seleccione una fecha.');
             $this->details = [];
             return;
         }
 
         if($this->reportRange == 2 && ($this->date == '' || $this->date3 == '')){
 
-            $this->emit('report-error', 'Seleccione ambas fechas');
+            $this->emit('report-error', 'Seleccione ambas fechas.');
             $this->details = [];
             return;
         }
 
+        if($this->reportRange == 3 && $this->end_month_option == 1 && $this->date == ''){
+
+            $this->emit('report-error', 'Seleccione una fecha.');
+            return;
+        }
+
         $this->details = CoverDetail::whereBetween('created_at', [$fecha1, $fecha2])->orderBy('id', 'asc')->get();
-        
 
         foreach($this->details as $detail){
 
@@ -130,6 +137,7 @@ class CoverReports extends Component
         'EnterUtility' => 'EnterUtility',
         'ReverseUtility' => 'ReverseUtility',
         'ChangeCoverDate' => 'ChangeCoverDate',
+        'CloseMonth' => 'CloseMonth',
     ];
 
     public function CreateCover()
@@ -322,88 +330,6 @@ class CoverReports extends Component
         }
     }
 
-    public function Force_Balance(){
-
-        if($this->reportRange == 0){
-
-            $rules = [
-
-                'amount' => 'required|numeric'
-            ];
-
-            $messages = [
-
-                'amount.required' => 'El monto es requerido',
-                'amount.numeric' => 'Este campo solo admite numeros'
-            ];
-            
-            $this->validate($rules, $messages);
-
-            $fecha1 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 00:00:00';
-            $fecha2 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 23:59:59';
-
-            $cov = Cover::firstWhere('description','diferencia por t/c');
-            $cov_det = $cov->details->where('cover_id',$cov->id)->whereBetween('created_at',[$fecha1, $fecha2])->first();
-
-            $cov_det->update([
-        
-                'actual_balance' => $cov_det->actual_balance + $this->amount
-
-            ]);
-
-            $this->emit('item-updated','Registro Exitoso');
-            $this->resetUI();
-            $this->render();
-
-        }else{
-
-            $this->emit('cover-error','No se puede alterar fechas pasadas');
-            return;
-        }
-
-    }
-
-    public function Close(){
-
-        /*$time_1 = now();
-        $time_2 = $time_1->copy()->endOfMonth();
-
-        if($time_1->diffInDays($time_2) == 0 || ($time_1->diffInDays($time_2) == 1 && $time_2->dayOfWeek == 7)){*/
-
-            $cap = Cover::firstWhere('description','capital de trabajo inicial');
-            $uti = Cover::firstWhere('description','utilidad acumulada');
-            $fact = Cover::firstWhere('description','facturas 6% acumulado');
-
-            $cap->update([
-                
-                'balance' => $cap->balance + $uti->balance
-
-            ]);
-
-            $uti->update([
-                
-                'balance' => 0
-
-            ]);
-
-            $fact->update([
-                
-                'balance' => 0
-
-            ]);
-
-            $this->emit('item-added','Registro Exitoso');
-            $this->mount();
-            $this->render();
-
-        /*}else{
-
-            $this->emit('cover-error', 'No se cumplen las condiciones');
-            return;
-        }*/
-
-    }
-
     public function ChangeCoverDate()
     {
         $today = Carbon::today()->format('Y-m-d');
@@ -569,6 +495,172 @@ class CoverReports extends Component
 
             }
         }
+    }
+
+    public function CloseMonth()
+    {
+        if ($this->reportRange != 3) {
+
+            $this->emit('cover-error', 'Seleccione la opcion "Cerrar Mes".');
+            return;
+
+        } elseif (count($this->details) < 1) {
+            
+            $this->emit('cover-error', 'No se ha encontrado caratula del dia.');
+            return;
+
+        } elseif ($this->reportRange == 3 && $this->end_month_option == 'Elegir') {
+            
+            $this->addError('end_month_option', 'Seleccione una opcion');
+            return;
+
+        } elseif ($this->end_month_option == 1 && $this->date == '') {
+
+            $this->resetValidation();
+            $this->emit('cover-error', 'Seleccione la nueva fecha a asignar.');
+            return;
+        
+        }/* elseif ($this->uti_det->actual_balance != $this->sum10) {
+
+            $this->emit('cover-error', 'El balance diario y la utilidad acumulada no concuerdan.');
+            return;
+        
+        }*/ elseif ($this->uti_det->actual_balance == $this->uti_det->previus_day_balance) {
+            
+            $this->resetValidation();
+            $this->emit('cover-error', 'No se ha ingresado la utilidad del dia.');
+            return;
+        
+        } else {
+
+            $this->resetValidation();
+
+            DB::beginTransaction();
+                    
+            try {
+
+                $bill = Bill::firstWhere('type','acumulativa');
+                $cap = Cover::firstWhere('description','capital de trabajo inicial');
+                $uti = Cover::firstWhere('description','utilidad acumulada');
+                $fact = Cover::firstWhere('description','facturas 6% acumulado');
+
+                $cap->update([
+                    
+                    'balance' => $cap->balance + $uti->balance
+
+                ]);
+
+                $uti->update([
+                    
+                    'balance' => 0
+
+                ]);
+
+                $fact->update([
+                    
+                    'balance' => 0
+
+                ]);
+
+                $bill->update([
+                    
+                    'type' => 'normal'
+
+                ]);
+
+                DB::commit();
+                $this->emit('item-added','Registro Exitoso');
+                $this->mount();
+                $this->render();
+
+            } catch (Exception $e) {
+
+                DB::rollback();
+                //$this->emit('cover-error', $e->getMessage());
+                $this->emit('cover-error', 'Algo salio mal.');
+
+            }
+
+        }
+
+        /*$time_1 = now();
+        $time_2 = $time_1->copy()->endOfMonth();
+
+        if($time_1->diffInDays($time_2) == 0 || ($time_1->diffInDays($time_2) == 1 && $time_2->dayOfWeek == 7)){
+
+            $cap = Cover::firstWhere('description','capital de trabajo inicial');
+            $uti = Cover::firstWhere('description','utilidad acumulada');
+            $fact = Cover::firstWhere('description','facturas 6% acumulado');
+
+            $cap->update([
+                
+                'balance' => $cap->balance + $uti->balance
+
+            ]);
+
+            $uti->update([
+                
+                'balance' => 0
+
+            ]);
+
+            $fact->update([
+                
+                'balance' => 0
+
+            ]);
+
+            $this->emit('item-added','Registro Exitoso');
+            $this->mount();
+            $this->render();
+
+        }else{
+
+            $this->emit('cover-error', 'No se cumplen las condiciones');
+            return;
+        }*/
+
+    }
+
+    public function Force_Balance(){
+
+        if($this->reportRange == 0){
+
+            $rules = [
+
+                'amount' => 'required|numeric'
+            ];
+
+            $messages = [
+
+                'amount.required' => 'El monto es requerido',
+                'amount.numeric' => 'Este campo solo admite numeros'
+            ];
+            
+            $this->validate($rules, $messages);
+
+            $fecha1 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 00:00:00';
+            $fecha2 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 23:59:59';
+
+            $cov = Cover::firstWhere('description','diferencia por t/c');
+            $cov_det = $cov->details->where('cover_id',$cov->id)->whereBetween('created_at',[$fecha1, $fecha2])->first();
+
+            $cov_det->update([
+        
+                'actual_balance' => $cov_det->actual_balance + $this->amount
+
+            ]);
+
+            $this->emit('item-updated','Registro Exitoso');
+            $this->resetUI();
+            $this->render();
+
+        }else{
+
+            $this->emit('cover-error','No se puede alterar fechas pasadas');
+            return;
+        }
+
     }
 
     public function resetUI()
