@@ -1379,11 +1379,11 @@ class Paydesks extends Component
                                         
                                         $import = Import::find($this->temp1);
 
-                                        if($this->amount <= $this->balance){
+                                        if($this->amount <= $import->amount){
 
                                             $debt = $import->update([
                 
-                                                'amount' => $this->balance - $this->amount
+                                                'amount' => $import->amount - $this->amount
                         
                                             ]);
 
@@ -1393,8 +1393,8 @@ class Paydesks extends Component
                 
                                                     'description' => $this->description,
                                                     'amount' => $this->amount,
-                                                    'previus_balance' => $this->balance,
-                                                    'actual_balance' => $this->balance - $this->amount
+                                                    'previus_balance' => $import->amount,
+                                                    'actual_balance' => $import->amount - $this->amount
                                                 ]);
                             
                                                 $cov->update([
@@ -1838,8 +1838,6 @@ class Paydesks extends Component
                 
                         $cov = Cover::firstWhere('description',$paydesk->type);
                         $cov_det = $cov->details->where('cover_id',$cov->id)->whereBetween('created_at',[$this->from, $this->to])->first();
-
-                        //dd($cov_det->actual_balance - $paydesk->amount);
                         
                         if($paydesk->action == 'ingreso'){
 
@@ -2933,9 +2931,10 @@ class Paydesks extends Component
                     $this->mount();
                     $this->render();
 
-                } catch (Exception) {
+                } catch (Exception $e) {
                     
                     DB::rollback();
+                    //$this->emit('movement-error', $e->getMessage());
                     $this->emit('movement-error', 'Algo salio mal');
                 }
 
