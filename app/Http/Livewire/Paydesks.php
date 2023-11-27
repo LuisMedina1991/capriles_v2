@@ -1161,46 +1161,51 @@ class Paydesks extends Component
                                 case 'proveedores por pagar': 
                                     
                                     $provider = ProviderPayable::find($this->temp2);
+
+                                    if($this->amount <= $provider->amount){
                 
-                                    $detail = $provider->details()->create([
-                
-                                        'description' => $this->description,
-                                        'amount' => $this->amount,
-                                        'previus_balance' => $this->balance,
-                                        'actual_balance' => $this->balance - $this->amount
-                                    ]);
-                
-                                    //if($this->amount < $this->balance){
-                
-                                        $provider->update([
-                
-                                            'amount' => $this->balance - $this->amount
+                                        $detail = $provider->details()->create([
                     
+                                            'description' => $this->description,
+                                            'amount' => $this->amount,
+                                            'previus_balance' => $provider->amount,
+                                            'actual_balance' => $provider->amount - $this->amount
                                         ]);
-                
-                                    /*}else{
-                
-                                        $provider->delete();
-                                    }*/
-                
-                                    $cov->update([
-                            
-                                        'balance' => $cov->balance - $this->amount
-                        
-                                    ]);
-                
-                                    $cov_det->update([
+                    
+                                        if ($detail) {
 
-                                        'egress' => $cov_det->egress + $this->amount,
-                                        'actual_balance' => $cov_det->actual_balance - $this->amount
+                                            $provider->update([
+                
+                                                'amount' => $provider->amount- $this->amount
                         
-                                    ]);
-
-                                    $paydesk->update([
-
-                                        'relation' => $detail->id
+                                            ]);
                         
-                                    ]);
+                                            $cov->update([
+                                    
+                                                'balance' => $cov->balance - $this->amount
+                                
+                                            ]);
+                        
+                                            $cov_det->update([
+    
+                                                'egress' => $cov_det->egress + $this->amount,
+                                                'actual_balance' => $cov_det->actual_balance - $this->amount
+                                
+                                            ]);
+    
+                                            $paydesk->update([
+    
+                                                'relation' => $detail->id
+                                
+                                            ]);
+
+                                        }
+
+                                    }else{
+
+                                        $this->emit('movement-error','El pago es mayor a la deuda');
+                                        return;
+                                    }
                 
                                 break;
                 
