@@ -386,9 +386,9 @@ class Paydesks extends Component
        
     }
 
-    public function Store(){
-
-        if($this->gen_det != null){
+    public function Store()
+    {
+        if ($this->gen_det != null) {
 
             $rules = [
 
@@ -428,7 +428,7 @@ class Paydesks extends Component
             
                 try {
 
-                    if($this->action == 'ingreso'){
+                    if ($this->action == 'ingreso') {
 
                         $paydesk = Paydesk::create([
 
@@ -452,7 +452,7 @@ class Paydesks extends Component
 
                         ]);
 
-                    }else{
+                    } else {
 
                         $paydesk = Paydesk::create([
 
@@ -478,21 +478,202 @@ class Paydesks extends Component
 
                     }
 
-                    if($paydesk){
+                    if ($paydesk) {
 
-                        if(Cover::firstWhere('description',$this->type) != null){
+                        if (Cover::firstWhere('description',$this->type) != null) {
 
                             $cov = Cover::firstWhere('description',$this->type);
                             $cov_det = $cov->details->where('cover_id',$cov->id)->whereBetween('created_at',[$this->from, $this->to])->first();
 
-                            switch($this->type){
+                            switch ($this->type) {
 
-                                case 'gimnasio':
+                                case 'gastos de importacion':
 
-                                    if($this->action == 'ingreso'){
+                                    if ($this->action == 'ingreso') {
 
-                                        $cov->update([
+                                        $debt = Import::find($this->temp1);
+
+                                        if ($this->amount > $debt->amount) {
+
+                                            $this->emit('movement-error','El pago es mayor a la deuda.');
+                                            return;
+
+                                        } else {
+
+                                            $detail = $debt->details()->create([
+                
+                                                'description' => $this->description,
+                                                'amount' => $this->amount,
+                                                'previus_balance' => $debt->amount,
+                                                'actual_balance' => $debt->amount - $this->amount
+                                            ]);
+
+                                            if($detail){
+
+                                                $debt->update([
+                
+                                                    'amount' => $debt->amount - $detail->amount
+                            
+                                                ]);
+                            
+                                                $cov->update([
+                                    
+                                                    'balance' => $cov->balance - $detail->amount
+                                    
+                                                ]);
+                        
+                                                $cov_det->update([
+        
+                                                    'egress' => $cov_det->egress + $detail->amount,
+                                                    'actual_balance' => $cov_det->actual_balance - $detail->amount
+                                    
+                                                ]);
+        
+                                                $paydesk->update([
+        
+                                                    'relation' => $detail->id
+                                    
+                                                ]);
+                                            }
+                                            
+                                        }
+
+                                    } else {
+                                        
+                                        $debt = Import::create([
+                
+                                            'description' => $this->description,
+                                            'amount' => $this->amount
                     
+                                        ]);
+                    
+                                        $cov->update([
+                                
+                                            'balance' => $cov->balance + $debt->amount
+                            
+                                        ]);
+                    
+                                        $cov_det->update([
+                
+                                            'ingress' => $cov_det->ingress + $debt->amount,
+                                            'actual_balance' => $cov_det->actual_balance + $debt->amount
+                            
+                                        ]);
+
+                                        $paydesk->update([
+
+                                            'relation' => $debt->id
+                            
+                                        ]);
+                                        
+                                    }
+                
+                                break;
+
+                                case 'clientes por cobrar': 
+                
+                                    if($this->action == 'egreso'){
+                
+                                        $costumer = Costumer::find($this->temp);
+                
+                                        $debt = CostumerReceivable::create([
+                
+                                            'description' => $this->description,
+                                            'amount' => $this->amount,
+                                            'costumer_id' => $costumer->id
+                
+                                        ]);
+                
+                                        $cov->update([
+                            
+                                            'balance' => $cov->balance + $this->amount
+                            
+                                        ]);
+                
+                                        $cov_det->update([
+
+                                            'ingress' => $cov_det->ingress + $this->amount,
+                                            'actual_balance' => $cov_det->actual_balance + $this->amount
+                            
+                                        ]);
+
+                                        $paydesk->update([
+
+                                            'relation' => $debt->id
+                            
+                                        ]);
+                
+                                    }else{
+                
+                                        $costumer = CostumerReceivable::find($this->temp2);
+                
+                                        if($this->amount <= $costumer->amount){
+
+                                            $update = $costumer->update([
+                
+                                                'amount' => $costumer->amount - $this->amount
+                        
+                                            ]);
+
+                                            if($update){
+
+                                                $detail = $costumer->details()->create([
+                
+                                                    'description' => $this->description,
+                                                    'amount' => $this->amount,
+                                                    'previus_balance' => $costumer->amount,
+                                                    'actual_balance' => $costumer->amount - $this->amount
+                                                ]);
+
+                                                $cov->update([
+                            
+                                                    'balance' => $cov->balance - $this->amount
+                                    
+                                                ]);
+                        
+                                                $cov_det->update([
+        
+                                                    'egress' => $cov_det->egress + $this->amount,
+                                                    'actual_balance' => $cov_det->actual_balance - $this->amount
+                                    
+                                                ]);
+        
+                                                $paydesk->update([
+        
+                                                    'relation' => $detail->id
+                                    
+                                                ]);
+                                            }
+
+                                        }else{
+
+                                            $this->emit('movement-error','El pago es mayor a la deuda');
+                                            return;
+                                        }
+
+                                    }
+                
+                                break;
+                
+                                case 'cheques por cobrar': 
+                
+                                    if($this->action == 'egreso'){
+                                        
+                                        $costumer = Costumer::find($this->chc1);
+                                        $bank = Bank::find($this->chc2);
+                
+                                        $debt = CheckReceivable::create([
+                
+                                            'description' => $this->description,
+                                            'amount' => $this->amount,
+                                            'number' => $this->chc3,
+                                            'bank_id' => $bank->id,
+                                            'costumer_id' => $costumer->id
+                
+                                        ]);
+                
+                                        $cov->update([
+                            
                                             'balance' => $cov->balance + $this->amount
                             
                                         ]);
@@ -504,48 +685,381 @@ class Paydesks extends Component
                             
                                         ]);
 
-                                        $debt = Gym::create([
-                                            
-                                            'description' => $this->description,
-                                            'amount' => $this->amount
-                    
-                                        ]);
-
                                         $paydesk->update([
 
                                             'relation' => $debt->id
                             
                                         ]);
-
+                
                                     }else{
+                
+                                        $check = CheckReceivable::find($this->chc2);
+                
+                                        if($this->amount <= $check->amount){
 
-                                        $cov->update([
+                                            $debt = $check->update([
+                
+                                                'amount' => $check->amount - $this->amount
                     
-                                            'balance' => $cov->balance - $this->amount
+                                            ]);
+
+                                            if($debt){
+
+                                                $detail = $check->details()->create([
+                
+                                                    'description' => $this->description,
+                                                    'amount' => $this->amount,
+                                                    'previus_balance' => $check->amount,
+                                                    'actual_balance' => $check->amount - $this->amount
+                                                    
+                                                ]);
+        
+                                                $cov->update([
+                                    
+                                                    'balance' => $cov->balance - $this->amount
+                                    
+                                                ]);
+                                    
+                                                $cov_det->update([
+                                
+                                                    'egress' => $cov_det->egress + $this->amount,
+                                                    'actual_balance' => $cov_det->actual_balance - $this->amount
+                                    
+                                                ]);
+        
+                                                $paydesk->update([
+        
+                                                    'relation' => $detail->id
+                                    
+                                                ]);
+                                            }
+
+                                        }else{
+
+                                            $this->emit('movement-error','El monto es mayor al saldo');
+                                            return;
+                                        }
+
+                                    }
+                
+                                break;
+                
+                                case 'otros por cobrar': 
+                
+                                    if($this->action == 'egreso'){
+                
+                                        $other = OtherReceivable::create([
+                
+                                            'description' => $this->description,
+                                            'reference' => $this->temp3,
+                                            'amount' => $this->amount
+                    
+                                        ]);
+                
+                                        $cov->update([
+                            
+                                            'balance' => $cov->balance + $this->amount
                             
                                         ]);
                             
                                         $cov_det->update([
                         
-                                            'egress' => $cov_det->egress + $this->amount,
-                                            'actual_balance' => $cov_det->actual_balance - $this->amount
+                                            'ingress' => $cov_det->ingress + $this->amount,
+                                            'actual_balance' => $cov_det->actual_balance + $this->amount
                             
-                                        ]);
-
-                                        $debt = Gym::create([
-                                            
-                                            'description' => $this->description,
-                                            'amount' => - $this->amount
-                    
                                         ]);
 
                                         $paydesk->update([
 
-                                            'relation' => $debt->id
+                                            'relation' => $other->id
                             
                                         ]);
-                                    }
+                
+                                    }else{
+                
+                                        $other = OtherReceivable::find($this->temp1);
+                
+                                        if($this->amount <= $other->amount){
 
+                                            $detail = $other->details()->create([
+                
+                                                'description' => $this->description,
+                                                'amount' => $this->amount,
+                                                'previus_balance' => $other->amount,
+                                                'actual_balance' => $other->amount - $this->amount
+                                            ]);
+
+                                            if($detail){
+
+                                                $other->update([
+                
+                                                    'amount' => $other->amount - $this->amount
+                        
+                                                ]);
+                        
+                                                $cov->update([
+                                    
+                                                    'balance' => $cov->balance - $this->amount
+                                    
+                                                ]);
+                                    
+                                                $cov_det->update([
+                                
+                                                    'egress' => $cov_det->egress + $this->amount,
+                                                    'actual_balance' => $cov_det->actual_balance - $this->amount
+                                    
+                                                ]);
+        
+                                                $paydesk->update([
+        
+                                                    'relation' => $detail->id
+                                    
+                                                ]);
+                                            }
+
+                                        }else{
+
+                                            $this->emit('movement-error','El pago es mayor a la deuda');
+                                            return;
+                                        }
+
+                                    }
+                
+                                break;
+                
+                                case 'proveedores por pagar': 
+                                    
+                                    $provider = ProviderPayable::find($this->temp2);
+
+                                    if($this->amount <= $provider->amount){
+                
+                                        $detail = $provider->details()->create([
+                    
+                                            'description' => $this->description,
+                                            'amount' => $this->amount,
+                                            'previus_balance' => $provider->amount,
+                                            'actual_balance' => $provider->amount - $this->amount
+                                        ]);
+                    
+                                        if ($detail) {
+
+                                            $provider->update([
+                
+                                                'amount' => $provider->amount- $this->amount
+                        
+                                            ]);
+                        
+                                            $cov->update([
+                                    
+                                                'balance' => $cov->balance - $this->amount
+                                
+                                            ]);
+                        
+                                            $cov_det->update([
+    
+                                                'egress' => $cov_det->egress + $this->amount,
+                                                'actual_balance' => $cov_det->actual_balance - $this->amount
+                                
+                                            ]);
+    
+                                            $paydesk->update([
+    
+                                                'relation' => $detail->id
+                                
+                                            ]);
+
+                                        }
+
+                                    }else{
+
+                                        $this->emit('movement-error','El pago es mayor a la deuda');
+                                        return;
+                                    }
+                
+                                break;
+                
+                                case 'consignaciones': 
+                                    
+                                    $app = Appropriation::find($this->temp2);
+
+                                    if($this->amount <= $app->amount){
+                
+                                        $detail = $app->details()->create([
+                    
+                                            'description' => $this->description,
+                                            'amount' => $this->amount,
+                                            'previus_balance' => $app->amount,
+                                            'actual_balance' => $app->amount - $this->amount
+                                        ]);
+                    
+                                        if ($detail) {
+
+                                            $app->update([
+                
+                                                'amount' => $app->amount - $this->amount
+                        
+                                            ]);
+                        
+                                            $cov->update([
+                                    
+                                                'balance' => $cov->balance - $this->amount
+                                
+                                            ]);
+                        
+                                            $cov_det->update([
+    
+                                                'egress' => $cov_det->egress + $this->amount,
+                                                'actual_balance' => $cov_det->actual_balance - $this->amount
+                                
+                                            ]);
+    
+                                            $paydesk->update([
+    
+                                                'relation' => $detail->id
+                                
+                                            ]);
+
+                                        }
+
+                                    }else{
+
+                                        $this->emit('movement-error','El pago es mayor a la deuda');
+                                        return;
+                                    }
+                
+                                break;
+
+                                case 'otros por pagar': 
+                
+                                    if ($this->action == 'ingreso') {
+                                        
+                                        /*HACER ESTO EN LAS VALIDACIONES*/
+                                        if ($this->temp != 'Elegir') {
+                
+                                            if ($this->temp == 'Nueva') {
+
+                                                /*HACER ESTO EN LAS VALIDACIONES*/
+                                                if ($this->temp3 == '' || $this->temp3 == null) {
+
+                                                    $this->emit('movement-error','Ingrese la referencia.');
+                                                    return;
+
+                                                } else {
+
+                                                    $debt = Payable::create([
+                    
+                                                        'description' => $this->description,
+                                                        'reference' => $this->temp3,
+                                                        'amount' => $this->amount
+                                
+                                                    ]);
+    
+                                                    $detail = $debt->details()->create([
+                    
+                                                        'description' => $this->description,
+                                                        'amount' => $debt->amount,
+                                                        'previus_balance' => 0,
+                                                        'actual_balance' => $debt->amount
+                                                    ]);
+
+                                                }
+                    
+                                            } else {
+                    
+                                                $debt = Payable::find($this->temp1);
+                    
+                                                $detail = $debt->details()->create([
+                    
+                                                    'description' => $this->description,
+                                                    'amount' => $this->amount,
+                                                    'previus_balance' => $debt->amount,
+                                                    'actual_balance' => $debt->amount + $this->amount
+                                                ]);
+                    
+                                                $debt->update([
+                                
+                                                    'amount' => $debt->amount + $detail->amount
+                                        
+                                                ]);
+
+                                            }
+
+                                            $paydesk->update([
+
+                                                'relation' => $detail->id
+                                
+                                            ]);
+
+                                            $cov->update([
+                            
+                                                'balance' => $cov->balance + $detail->amount
+                                
+                                            ]);
+                                
+                                            $cov_det->update([
+                            
+                                                'ingress' => $cov_det->ingress + $detail->amount,
+                                                'actual_balance' => $cov_det->actual_balance + $detail->amount
+                                
+                                            ]);
+
+                                        } else {
+
+                                            $this->emit('movement-error','Seleccione tipo de deuda.');
+                                            return;
+
+                                        }
+                
+                                    } else {
+                
+                                        $payable = Payable::find($this->temp1);
+
+                                        if ($this->amount > $payable->amount) {
+
+                                            $this->emit('movement-error','El pago es mayor a la deuda.');
+                                            return;
+
+                                        } else {
+
+                                            $detail = $payable->details()->create([
+                    
+                                                'description' => $this->description,
+                                                'amount' => $this->amount,
+                                                'previus_balance' => $payable->amount,
+                                                'actual_balance' => $payable->amount - $this->amount
+                                            ]);
+
+                                            if ($detail) {
+
+                                                $payable->update([
+                                
+                                                    'amount' => $payable->amount - $detail->amount
+                                        
+                                                ]);
+
+                                                $paydesk->update([
+    
+                                                    'relation' => $detail->id
+                                    
+                                                ]);
+                        
+                                                $cov->update([
+                                    
+                                                    'balance' => $cov->balance - $detail->amount
+                                    
+                                                ]);
+                                    
+                                                $cov_det->update([
+                                
+                                                    'egress' => $cov_det->egress + $detail->amount,
+                                                    'actual_balance' => $cov_det->actual_balance - $detail->amount
+                                    
+                                                ]);
+
+                                            }
+                                        }
+                                    }
+                
                                 break;
 
                                 case 'anticreticos': 
@@ -679,397 +1193,7 @@ class Paydesks extends Component
                                     }
                 
                                 break;
-                
-                                case 'otros por pagar': 
-                
-                                    if ($this->action == 'ingreso') {
-                                        
-                                        /*HACER ESTO EN LAS VALIDACIONES*/
-                                        if ($this->temp != 'Elegir') {
-                
-                                            if ($this->temp == 'Nueva') {
 
-                                                /*HACER ESTO EN LAS VALIDACIONES*/
-                                                if ($this->temp3 == '' || $this->temp3 == null) {
-
-                                                    $this->emit('movement-error','Ingrese la referencia.');
-                                                    return;
-
-                                                } else {
-
-                                                    $debt = Payable::create([
-                    
-                                                        'description' => $this->description,
-                                                        'reference' => $this->temp3,
-                                                        'amount' => $this->amount
-                                
-                                                    ]);
-    
-                                                    $detail = $debt->details()->create([
-                    
-                                                        'description' => $this->description,
-                                                        'amount' => $debt->amount,
-                                                        'previus_balance' => 0,
-                                                        'actual_balance' => $debt->amount
-                                                    ]);
-
-                                                }
-                    
-                                            } else {
-                    
-                                                $debt = Payable::find($this->temp1);
-                    
-                                                $detail = $debt->details()->create([
-                    
-                                                    'description' => $this->description,
-                                                    'amount' => $this->amount,
-                                                    'previus_balance' => $debt->amount,
-                                                    'actual_balance' => $debt->amount + $this->amount
-                                                ]);
-                    
-                                                $debt->update([
-                                
-                                                    'amount' => $debt->amount + $detail->amount
-                                        
-                                                ]);
-
-                                            }
-
-                                            $paydesk->update([
-
-                                                'relation' => $detail->id
-                                
-                                            ]);
-
-                                            $cov->update([
-                            
-                                                'balance' => $cov->balance + $detail->amount
-                                
-                                            ]);
-                                
-                                            $cov_det->update([
-                            
-                                                'ingress' => $cov_det->ingress + $detail->amount,
-                                                'actual_balance' => $cov_det->actual_balance + $detail->amount
-                                
-                                            ]);
-
-                                        } else {
-
-                                            $this->emit('movement-error','Seleccione tipo de deuda.');
-                                            return;
-
-                                        }
-                
-                                    } else {
-                
-                                        $payable = Payable::find($this->temp1);
-
-                                        if ($this->amount > $payable->amount) {
-
-                                            $this->emit('movement-error','El pago es mayor a la deuda.');
-                                            return;
-
-                                        } else {
-
-                                            $detail = $payable->details()->create([
-                    
-                                                'description' => $this->description,
-                                                'amount' => $this->amount,
-                                                'previus_balance' => $payable->amount,
-                                                'actual_balance' => $payable->amount - $this->amount
-                                            ]);
-
-                                            if ($detail) {
-
-                                                $payable->update([
-                                
-                                                    'amount' => $payable->amount - $detail->amount
-                                        
-                                                ]);
-
-                                                $paydesk->update([
-    
-                                                    'relation' => $detail->id
-                                    
-                                                ]);
-                        
-                                                $cov->update([
-                                    
-                                                    'balance' => $cov->balance - $detail->amount
-                                    
-                                                ]);
-                                    
-                                                $cov_det->update([
-                                
-                                                    'egress' => $cov_det->egress + $detail->amount,
-                                                    'actual_balance' => $cov_det->actual_balance - $detail->amount
-                                    
-                                                ]);
-
-                                            }
-                                        }
-                                    }
-                
-                                break;
-                
-                                case 'otros por cobrar': 
-                
-                                    if($this->action == 'egreso'){
-                
-                                        $other = OtherReceivable::create([
-                
-                                            'description' => $this->description,
-                                            'reference' => $this->temp3,
-                                            'amount' => $this->amount
-                    
-                                        ]);
-                
-                                        $cov->update([
-                            
-                                            'balance' => $cov->balance + $this->amount
-                            
-                                        ]);
-                            
-                                        $cov_det->update([
-                        
-                                            'ingress' => $cov_det->ingress + $this->amount,
-                                            'actual_balance' => $cov_det->actual_balance + $this->amount
-                            
-                                        ]);
-
-                                        $paydesk->update([
-
-                                            'relation' => $other->id
-                            
-                                        ]);
-                
-                                    }else{
-                
-                                        $other = OtherReceivable::find($this->temp1);
-                
-                                        if($this->amount <= $other->amount){
-
-                                            $detail = $other->details()->create([
-                
-                                                'description' => $this->description,
-                                                'amount' => $this->amount,
-                                                'previus_balance' => $other->amount,
-                                                'actual_balance' => $other->amount - $this->amount
-                                            ]);
-
-                                            if($detail){
-
-                                                $other->update([
-                
-                                                    'amount' => $other->amount - $this->amount
-                        
-                                                ]);
-                        
-                                                $cov->update([
-                                    
-                                                    'balance' => $cov->balance - $this->amount
-                                    
-                                                ]);
-                                    
-                                                $cov_det->update([
-                                
-                                                    'egress' => $cov_det->egress + $this->amount,
-                                                    'actual_balance' => $cov_det->actual_balance - $this->amount
-                                    
-                                                ]);
-        
-                                                $paydesk->update([
-        
-                                                    'relation' => $detail->id
-                                    
-                                                ]);
-                                            }
-
-                                        }else{
-
-                                            $this->emit('movement-error','El pago es mayor a la deuda');
-                                            return;
-                                        }
-
-                                    }
-                
-                                break;
-                
-                                case 'cheques por cobrar': 
-                
-                                    if($this->action == 'egreso'){
-                                        
-                                        $costumer = Costumer::find($this->chc1);
-                                        $bank = Bank::find($this->chc2);
-                
-                                        $debt = CheckReceivable::create([
-                
-                                            'description' => $this->description,
-                                            'amount' => $this->amount,
-                                            'number' => $this->chc3,
-                                            'bank_id' => $bank->id,
-                                            'costumer_id' => $costumer->id
-                
-                                        ]);
-                
-                                        $cov->update([
-                            
-                                            'balance' => $cov->balance + $this->amount
-                            
-                                        ]);
-                            
-                                        $cov_det->update([
-                        
-                                            'ingress' => $cov_det->ingress + $this->amount,
-                                            'actual_balance' => $cov_det->actual_balance + $this->amount
-                            
-                                        ]);
-
-                                        $paydesk->update([
-
-                                            'relation' => $debt->id
-                            
-                                        ]);
-                
-                                    }else{
-                
-                                        $check = CheckReceivable::find($this->chc2);
-                
-                                        if($this->amount <= $check->amount){
-
-                                            $debt = $check->update([
-                
-                                                'amount' => $check->amount - $this->amount
-                    
-                                            ]);
-
-                                            if($debt){
-
-                                                $detail = $check->details()->create([
-                
-                                                    'description' => $this->description,
-                                                    'amount' => $this->amount,
-                                                    'previus_balance' => $check->amount,
-                                                    'actual_balance' => $check->amount - $this->amount
-                                                    
-                                                ]);
-        
-                                                $cov->update([
-                                    
-                                                    'balance' => $cov->balance - $this->amount
-                                    
-                                                ]);
-                                    
-                                                $cov_det->update([
-                                
-                                                    'egress' => $cov_det->egress + $this->amount,
-                                                    'actual_balance' => $cov_det->actual_balance - $this->amount
-                                    
-                                                ]);
-        
-                                                $paydesk->update([
-        
-                                                    'relation' => $detail->id
-                                    
-                                                ]);
-                                            }
-
-                                        }else{
-
-                                            $this->emit('movement-error','El monto es mayor al saldo');
-                                            return;
-                                        }
-
-                                    }
-                
-                                break;
-                
-                                case 'clientes por cobrar': 
-                
-                                    if($this->action == 'egreso'){
-                
-                                        $costumer = Costumer::find($this->temp);
-                
-                                        $debt = CostumerReceivable::create([
-                
-                                            'description' => $this->description,
-                                            'amount' => $this->amount,
-                                            'costumer_id' => $costumer->id
-                
-                                        ]);
-                
-                                        $cov->update([
-                            
-                                            'balance' => $cov->balance + $this->amount
-                            
-                                        ]);
-                
-                                        $cov_det->update([
-
-                                            'ingress' => $cov_det->ingress + $this->amount,
-                                            'actual_balance' => $cov_det->actual_balance + $this->amount
-                            
-                                        ]);
-
-                                        $paydesk->update([
-
-                                            'relation' => $debt->id
-                            
-                                        ]);
-                
-                                    }else{
-                
-                                        $costumer = CostumerReceivable::find($this->temp2);
-                
-                                        if($this->amount <= $costumer->amount){
-
-                                            $update = $costumer->update([
-                
-                                                'amount' => $costumer->amount - $this->amount
-                        
-                                            ]);
-
-                                            if($update){
-
-                                                $detail = $costumer->details()->create([
-                
-                                                    'description' => $this->description,
-                                                    'amount' => $this->amount,
-                                                    'previus_balance' => $costumer->amount,
-                                                    'actual_balance' => $costumer->amount - $this->amount
-                                                ]);
-
-                                                $cov->update([
-                            
-                                                    'balance' => $cov->balance - $this->amount
-                                    
-                                                ]);
-                        
-                                                $cov_det->update([
-        
-                                                    'egress' => $cov_det->egress + $this->amount,
-                                                    'actual_balance' => $cov_det->actual_balance - $this->amount
-                                    
-                                                ]);
-        
-                                                $paydesk->update([
-        
-                                                    'relation' => $detail->id
-                                    
-                                                ]);
-                                            }
-
-                                        }else{
-
-                                            $this->emit('movement-error','El pago es mayor a la deuda');
-                                            return;
-                                        }
-
-                                    }
-                
-                                break;
-                
                                 case 'facturas/impuestos': 
                 
                                     if($this->action == 'ingreso'){
@@ -1189,108 +1313,6 @@ class Paydesks extends Component
                 
                                 break;
                 
-                                case 'proveedores por pagar': 
-                                    
-                                    $provider = ProviderPayable::find($this->temp2);
-
-                                    if($this->amount <= $provider->amount){
-                
-                                        $detail = $provider->details()->create([
-                    
-                                            'description' => $this->description,
-                                            'amount' => $this->amount,
-                                            'previus_balance' => $provider->amount,
-                                            'actual_balance' => $provider->amount - $this->amount
-                                        ]);
-                    
-                                        if ($detail) {
-
-                                            $provider->update([
-                
-                                                'amount' => $provider->amount- $this->amount
-                        
-                                            ]);
-                        
-                                            $cov->update([
-                                    
-                                                'balance' => $cov->balance - $this->amount
-                                
-                                            ]);
-                        
-                                            $cov_det->update([
-    
-                                                'egress' => $cov_det->egress + $this->amount,
-                                                'actual_balance' => $cov_det->actual_balance - $this->amount
-                                
-                                            ]);
-    
-                                            $paydesk->update([
-    
-                                                'relation' => $detail->id
-                                
-                                            ]);
-
-                                        }
-
-                                    }else{
-
-                                        $this->emit('movement-error','El pago es mayor a la deuda');
-                                        return;
-                                    }
-                
-                                break;
-                
-                                case 'consignaciones': 
-                                    
-                                    $app = Appropriation::find($this->temp2);
-
-                                    if($this->amount <= $app->amount){
-                
-                                        $detail = $app->details()->create([
-                    
-                                            'description' => $this->description,
-                                            'amount' => $this->amount,
-                                            'previus_balance' => $app->amount,
-                                            'actual_balance' => $app->amount - $this->amount
-                                        ]);
-                    
-                                        if ($detail) {
-
-                                            $app->update([
-                
-                                                'amount' => $app->amount - $this->amount
-                        
-                                            ]);
-                        
-                                            $cov->update([
-                                    
-                                                'balance' => $cov->balance - $this->amount
-                                
-                                            ]);
-                        
-                                            $cov_det->update([
-    
-                                                'egress' => $cov_det->egress + $this->amount,
-                                                'actual_balance' => $cov_det->actual_balance - $this->amount
-                                
-                                            ]);
-    
-                                            $paydesk->update([
-    
-                                                'relation' => $detail->id
-                                
-                                            ]);
-
-                                        }
-
-                                    }else{
-
-                                        $this->emit('movement-error','El pago es mayor a la deuda');
-                                        return;
-                                    }
-                
-                                break;
-                
                                 case 'otros proveedores': 
                 
                                     if($this->action == 'ingreso'){
@@ -1400,29 +1422,29 @@ class Paydesks extends Component
                                     }
                 
                                 break;
-                
-                                case 'gastos de importacion': 
 
-                                    if($this->action == 'egreso'){
+                                case 'gimnasio':
 
-                                        $debt = Import::create([
-                
-                                            'description' => $this->description,
-                                            'amount' => $this->amount
-                    
-                                        ]);
-                    
+                                    if($this->action == 'ingreso'){
+
                                         $cov->update([
-                                
+                    
                                             'balance' => $cov->balance + $this->amount
                             
                                         ]);
-                    
+                            
                                         $cov_det->update([
-                
+                        
                                             'ingress' => $cov_det->ingress + $this->amount,
                                             'actual_balance' => $cov_det->actual_balance + $this->amount
                             
+                                        ]);
+
+                                        $debt = Gym::create([
+                                            
+                                            'description' => $this->description,
+                                            'amount' => $this->amount
+                    
                                         ]);
 
                                         $paydesk->update([
@@ -1432,53 +1454,53 @@ class Paydesks extends Component
                                         ]);
 
                                     }else{
-                                        
-                                        $import = Import::find($this->temp1);
 
-                                        if($this->amount <= $import->amount){
-
-                                            $debt = $import->update([
-                
-                                                'amount' => $import->amount - $this->amount
-                        
-                                            ]);
-
-                                            if($debt){
-
-                                                $det = $import->details()->create([
-                
-                                                    'description' => $this->description,
-                                                    'amount' => $this->amount,
-                                                    'previus_balance' => $import->amount,
-                                                    'actual_balance' => $import->amount - $this->amount
-                                                ]);
+                                        $cov->update([
+                    
+                                            'balance' => $cov->balance - $this->amount
                             
-                                                $cov->update([
-                                    
-                                                    'balance' => $cov->balance - $this->amount
-                                    
-                                                ]);
+                                        ]);
+                            
+                                        $cov_det->update([
                         
-                                                $cov_det->update([
-        
-                                                    'egress' => $cov_det->egress + $this->amount,
-                                                    'actual_balance' => $cov_det->actual_balance - $this->amount
-                                    
-                                                ]);
-        
-                                                $paydesk->update([
-        
-                                                    'relation' => $det->id
-                                    
-                                                ]);
-                                            }
+                                            'egress' => $cov_det->egress + $this->amount,
+                                            'actual_balance' => $cov_det->actual_balance - $this->amount
+                            
+                                        ]);
 
-                                        }else{
+                                        $debt = Gym::create([
+                                            
+                                            'description' => $this->description,
+                                            'amount' => - $this->amount
+                    
+                                        ]);
 
-                                            $this->emit('movement-error','El pago es mayor a la deuda');
-                                            return;
-                                        }
+                                        $paydesk->update([
+
+                                            'relation' => $debt->id
+                            
+                                        ]);
                                     }
+
+                                break;
+
+                                case 'utilidad': 
+                
+                                    $cov_det->update([
+                
+                                        'actual_balance' => $cov_det->actual_balance + $this->amount
+                        
+                                    ]);
+                
+                                break;
+
+                                case 'cambio de llantas': 
+                
+                                    $cov_det->update([
+                
+                                        'actual_balance' => $cov_det->actual_balance + $this->amount
+                        
+                                    ]);
                 
                                 break;
                 
@@ -1503,8 +1525,8 @@ class Paydesks extends Component
                                     }
                 
                                 break;
-                
-                                case 'gastos importadora': 
+
+                                case 'comisiones': 
                 
                                     $cov_det->update([
                 
@@ -1514,7 +1536,27 @@ class Paydesks extends Component
                 
                                 break;
                 
+                                case 'perdida por devolucion': 
+                
+                                    $cov_det->update([
+                
+                                        'actual_balance' => $cov_det->actual_balance + $this->temp3
+                        
+                                    ]);
+                
+                                break;
+                
                                 case 'gastos gorky': 
+                
+                                    $cov_det->update([
+                
+                                        'actual_balance' => $cov_det->actual_balance + $this->amount
+                        
+                                    ]);
+                
+                                break;
+
+                                case 'gastos importadora': 
                 
                                     $cov_det->update([
                 
@@ -1534,49 +1576,9 @@ class Paydesks extends Component
                 
                                 break;
 
-                                case 'comisiones': 
-                
-                                    $cov_det->update([
-                
-                                        'actual_balance' => $cov_det->actual_balance + $this->amount
-                        
-                                    ]);
-                
-                                break;
-
-                                case 'utilidad': 
-                
-                                    $cov_det->update([
-                
-                                        'actual_balance' => $cov_det->actual_balance + $this->amount
-                        
-                                    ]);
-                
-                                break;
-
-                                case 'perdida por devolucion': 
-                
-                                    $cov_det->update([
-                
-                                        'actual_balance' => $cov_det->actual_balance + $this->temp3
-                        
-                                    ]);
-                
-                                break;
-
-                                case 'cambio de llantas': 
-                
-                                    $cov_det->update([
-                
-                                        'actual_balance' => $cov_det->actual_balance + $this->amount
-                        
-                                    ]);
-                
-                                break;
-                                    
                             }
                 
-                        }else{
+                        } else {
                 
                             $account = BankAccount::firstWhere('id',$this->dr3);
                             $company = Company::firstWhere('id',$account->company_id)->description;
@@ -1672,7 +1674,7 @@ class Paydesks extends Component
                     //$this->emit('movement-error', 'Algo salio mal');
                 }
 
-        }else{
+        } else {
 
             $this->emit('cover-error','Se debe crear caratula del dia');
             return;
@@ -1884,57 +1886,64 @@ class Paydesks extends Component
 
     public function Destroy(Paydesk $paydesk){
 
-        if($this->gen_det != null){
+        if ($this->gen_det != null) {
 
             DB::beginTransaction();
             
                 try {
 
-                    if(Cover::firstWhere('description',$paydesk->type) != null){
+                    if (Cover::firstWhere('description',$paydesk->type) != null) {
                 
                         $cov = Cover::firstWhere('description',$paydesk->type);
                         $cov_det = $cov->details->where('cover_id',$cov->id)->whereBetween('created_at',[$this->from, $this->to])->first();
                         
-                        if($paydesk->action == 'ingreso'){
+                        if ($paydesk->action == 'ingreso') {
 
-                            switch($paydesk->type){
+                            switch ($paydesk->type) {
 
                                 case 'gastos de importacion':
                                     
-                                    $det = Detail::find($paydesk->relation);
+                                    $detail = Detail::find($paydesk->relation);
 
-                                    if($det != null){
+                                    if (!$detail) {
 
-                                        $debt = Import::find($det->detailable_id);
-
-                                        $debt->update([
-                                
-                                            'amount' => $debt->amount + $det->amount
-                            
-                                        ]);
-
-                                        $cov->update([
-                                
-                                            'balance' => $cov->balance + $det->amount
-                            
-                                        ]);
-                    
-                                        $cov_det->update([
-                    
-                                            'egress' => $cov_det->egress - $det->amount,
-                                            'actual_balance' => $cov_det->actual_balance + $det->amount
-                            
-                                        ]);
-                
-                                        $det->delete();
-
-                                    }else{
-
-                                        $this->emit('paydesk-error', 'Error desconocido al eliminar');
+                                        $this->emit('paydesk-error', 'No se ha encontrado el registro.');
                                         return;
-                                    }
 
-                                    $this->resetUI();
+                                    } else {
+
+                                        $debt = Import::find($detail->detailable_id);
+
+                                        if ($debt->details->last()->id != $detail->id) {
+
+                                            $this->emit('paydesk-error', 'Se han realizado movimientos posteriores a este registro. Anule esos movimientos primero.');
+                                            return;
+
+                                        } else {
+
+                                            $debt->update([
+                                
+                                                'amount' => $debt->amount + $detail->amount
+                                
+                                            ]);
+    
+                                            $cov->update([
+                                    
+                                                'balance' => $cov->balance + $detail->amount
+                                
+                                            ]);
+                        
+                                            $cov_det->update([
+                        
+                                                'egress' => $cov_det->egress - $detail->amount,
+                                                'actual_balance' => $cov_det->actual_balance + $detail->amount
+                                
+                                            ]);
+                    
+                                            $detail->delete();
+
+                                        }
+                                    }
                 
                                 break;
 
@@ -2328,17 +2337,27 @@ class Paydesks extends Component
                     
                             ]);
                         
-                        }else{
+                        } else {
 
-                            switch($paydesk->type){
+                            switch ($paydesk->type) {
 
                                 case 'gastos de importacion':
                                     
                                     $debt = Import::find($paydesk->relation);
 
-                                    if($debt != null){
+                                    if (!$debt) {
 
-                                        if(count($debt->details) < 1){
+                                        $this->emit('paydesk-error', 'No se ha encontrado el registro.');
+                                        return;
+
+                                    } else {
+
+                                        if (count($debt->details) > 0) {
+
+                                            $this->emit('paydesk-error', 'Se han realizado movimientos posteriores a este registro. Anule esos movimientos primero.');
+                                            return;
+
+                                        } else {
 
                                             $cov->update([
                                 
@@ -2355,19 +2374,8 @@ class Paydesks extends Component
                     
                                             $debt->delete();
 
-                                        }else{
-
-                                            $this->emit('paydesk-error', 'La deuda inicial ha sufrido cambios. Elimine esos movimientos primero.');
-                                            return;
                                         }
-
-                                    }else{
-
-                                        $this->emit('paydesk-error', 'Error desconocido al eliminar');
-                                        return;
                                     }
-
-                                    $this->resetUI();
                 
                                 break;
 
