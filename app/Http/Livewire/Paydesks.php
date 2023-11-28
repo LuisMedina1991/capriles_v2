@@ -658,8 +658,57 @@ class Paydesks extends Component
                 
                                 case 'cheques por cobrar': 
                 
-                                    if($this->action == 'egreso'){
-                                        
+                                    if ($this->action == 'ingreso') {
+
+                                        $debt = CheckReceivable::find($this->chc2);
+                
+                                        if ($this->amount > $debt->amount) {
+
+                                            $this->emit('movement-error','El monto es mayor al saldo.');
+                                            return;
+
+                                        } else {
+
+                                            $detail = $debt->details()->create([
+                
+                                                'description' => $this->description,
+                                                'amount' => $this->amount,
+                                                'previus_balance' => $debt->amount,
+                                                'actual_balance' => $debt->amount - $this->amount
+                                                
+                                            ]);
+
+                                            if ($detail) {
+
+                                                $debt = $debt->update([
+                
+                                                    'amount' => $debt->amount - $detail->amount
+                        
+                                                ]);
+        
+                                                $cov->update([
+                                    
+                                                    'balance' => $cov->balance - $detail->amount
+                                    
+                                                ]);
+                                    
+                                                $cov_det->update([
+                                
+                                                    'egress' => $cov_det->egress + $detail->amount,
+                                                    'actual_balance' => $cov_det->actual_balance - $detail->amount
+                                    
+                                                ]);
+        
+                                                $paydesk->update([
+        
+                                                    'relation' => $detail->id
+                                    
+                                                ]);
+                                            }
+                                        }
+                
+                                    } else {
+                
                                         $costumer = Costumer::find($this->chc1);
                                         $bank = Bank::find($this->chc2);
                 
@@ -675,14 +724,14 @@ class Paydesks extends Component
                 
                                         $cov->update([
                             
-                                            'balance' => $cov->balance + $this->amount
+                                            'balance' => $cov->balance + $debt->amount
                             
                                         ]);
                             
                                         $cov_det->update([
                         
-                                            'ingress' => $cov_det->ingress + $this->amount,
-                                            'actual_balance' => $cov_det->actual_balance + $this->amount
+                                            'ingress' => $cov_det->ingress + $debt->amount,
+                                            'actual_balance' => $cov_det->actual_balance + $debt->amount
                             
                                         ]);
 
@@ -691,55 +740,6 @@ class Paydesks extends Component
                                             'relation' => $debt->id
                             
                                         ]);
-                
-                                    }else{
-                
-                                        $check = CheckReceivable::find($this->chc2);
-                
-                                        if($this->amount <= $check->amount){
-
-                                            $debt = $check->update([
-                
-                                                'amount' => $check->amount - $this->amount
-                    
-                                            ]);
-
-                                            if($debt){
-
-                                                $detail = $check->details()->create([
-                
-                                                    'description' => $this->description,
-                                                    'amount' => $this->amount,
-                                                    'previus_balance' => $check->amount,
-                                                    'actual_balance' => $check->amount - $this->amount
-                                                    
-                                                ]);
-        
-                                                $cov->update([
-                                    
-                                                    'balance' => $cov->balance - $this->amount
-                                    
-                                                ]);
-                                    
-                                                $cov_det->update([
-                                
-                                                    'egress' => $cov_det->egress + $this->amount,
-                                                    'actual_balance' => $cov_det->actual_balance - $this->amount
-                                    
-                                                ]);
-        
-                                                $paydesk->update([
-        
-                                                    'relation' => $detail->id
-                                    
-                                                ]);
-                                            }
-
-                                        }else{
-
-                                            $this->emit('movement-error','El monto es mayor al saldo');
-                                            return;
-                                        }
 
                                     }
                 
@@ -1996,40 +1996,47 @@ class Paydesks extends Component
 
                                 case 'cheques por cobrar':
                                     
-                                    $det = Detail::find($paydesk->relation);
+                                    $detail = Detail::find($paydesk->relation);
 
-                                    if($det != null){
+                                    if (!$detail) {
 
-                                        $debt = CheckReceivable::find($det->detailable_id);
-
-                                        $debt->update([
-                                
-                                            'amount' => $debt->amount + $det->amount
-                            
-                                        ]);
-
-                                        $cov->update([
-                                
-                                            'balance' => $cov->balance + $det->amount
-                            
-                                        ]);
-                    
-                                        $cov_det->update([
-                    
-                                            'egress' => $cov_det->egress - $det->amount,
-                                            'actual_balance' => $cov_det->actual_balance + $det->amount
-                            
-                                        ]);
-                
-                                        $det->delete();
-
-                                    }else{
-
-                                        $this->emit('paydesk-error', 'Error desconocido al eliminar');
+                                        $this->emit('paydesk-error', 'No se ha encontrado el registro.');
                                         return;
-                                    }
 
-                                    $this->resetUI();
+                                    } else {
+
+                                        $debt = CheckReceivable::find($detail->detailable_id);
+
+                                        if ($debt->details->last()->id != $detail->id) {
+
+                                            $this->emit('paydesk-error', 'Se han realizado movimientos posteriores a este registro. Anule esos movimientos primero.');
+                                            return;
+
+                                        } else {
+
+                                            $debt->update([
+                                
+                                                'amount' => $debt->amount + $detail->amount
+                                
+                                            ]);
+    
+                                            $cov->update([
+                                    
+                                                'balance' => $cov->balance + $detail->amount
+                                
+                                            ]);
+                        
+                                            $cov_det->update([
+                        
+                                                'egress' => $cov_det->egress - $detail->amount,
+                                                'actual_balance' => $cov_det->actual_balance + $detail->amount
+                                
+                                            ]);
+                    
+                                            $detail->delete();
+
+                                        }
+                                    }
                 
                                 break;
 
@@ -2419,7 +2426,7 @@ class Paydesks extends Component
                                             ]);
                     
                                             $debt->delete();
-                                            
+
                                         }
                                     }
                 
@@ -2429,9 +2436,19 @@ class Paydesks extends Component
                                     
                                     $debt = CheckReceivable::find($paydesk->relation);
 
-                                    if($debt != null){
+                                    if (!$debt) {
 
-                                        if(count($debt->details) < 1){
+                                        $this->emit('paydesk-error', 'No se ha encontrado el registro.');
+                                        return;
+
+                                    } else {
+
+                                        if (count($debt->details) > 0) {
+
+                                            $this->emit('paydesk-error', 'Se han realizado movimientos posteriores a este registro. Anule esos movimientos primero.');
+                                            return;
+
+                                        } else {
 
                                             $cov->update([
                                 
@@ -2448,19 +2465,8 @@ class Paydesks extends Component
                     
                                             $debt->delete();
 
-                                        }else{
-
-                                            $this->emit('paydesk-error', 'La deuda inicial ha sufrido cambios. Elimine esos movimientos primero.');
-                                            return;
                                         }
-
-                                    }else{
-
-                                        $this->emit('paydesk-error', 'Error desconocido al eliminar');
-                                        return;
                                     }
-
-                                    $this->resetUI();
                 
                                 break;
 
