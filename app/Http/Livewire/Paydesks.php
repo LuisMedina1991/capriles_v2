@@ -1642,7 +1642,7 @@ class Paydesks extends Component
                 
                                     $cov_det->update([
                 
-                                        'actual_balance' => $cov_det->actual_balance + $this->amount
+                                        'actual_balance' => $cov_det->actual_balance + $paydesk->amount
                         
                                     ]);
                 
@@ -1652,7 +1652,7 @@ class Paydesks extends Component
                 
                                     $cov_det->update([
                 
-                                        'actual_balance' => $cov_det->actual_balance + $this->amount
+                                        'actual_balance' => $cov_det->actual_balance + $paydesk->amount
                         
                                     ]);
                 
@@ -1664,7 +1664,7 @@ class Paydesks extends Component
                 
                                         $cov_det->update([
                 
-                                            'actual_balance' => $cov_det->actual_balance + $this->amount
+                                            'actual_balance' => $cov_det->actual_balance + $paydesk->amount
                             
                                         ]);
                 
@@ -1672,7 +1672,7 @@ class Paydesks extends Component
                 
                                         $cov_det->update([
                 
-                                            'actual_balance' => $cov_det->actual_balance - $this->amount
+                                            'actual_balance' => $cov_det->actual_balance - $paydesk->amount
                             
                                         ]);
                 
@@ -1684,19 +1684,28 @@ class Paydesks extends Component
                 
                                     $cov_det->update([
                 
-                                        'actual_balance' => $cov_det->actual_balance + $this->amount
+                                        'actual_balance' => $cov_det->actual_balance + $paydesk->amount
                         
                                     ]);
                 
                                 break;
                 
                                 case 'perdida por devolucion': 
+
+                                    if ($this->temp3 == '' || $this->temp3 == null) {
+
+                                        $this->emit('movement-error','Rellene todos los campos.');
+                                        return;
+
+                                    } else {
+
+                                        $cov_det->update([
                 
-                                    $cov_det->update([
-                
-                                        'actual_balance' => $cov_det->actual_balance + $this->temp3
-                        
-                                    ]);
+                                            'actual_balance' => $cov_det->actual_balance + $this->temp3
+                            
+                                        ]);
+
+                                    }
                 
                                 break;
                 
@@ -1704,7 +1713,7 @@ class Paydesks extends Component
                 
                                     $cov_det->update([
                 
-                                        'actual_balance' => $cov_det->actual_balance + $this->amount
+                                        'actual_balance' => $cov_det->actual_balance + $paydesk->amount
                         
                                     ]);
                 
@@ -1714,7 +1723,7 @@ class Paydesks extends Component
                 
                                     $cov_det->update([
                 
-                                        'actual_balance' => $cov_det->actual_balance + $this->amount
+                                        'actual_balance' => $cov_det->actual_balance + $paydesk->amount
                         
                                     ]);
                 
@@ -1724,7 +1733,7 @@ class Paydesks extends Component
                 
                                     $cov_det->update([
                 
-                                        'actual_balance' => $cov_det->actual_balance + $this->amount
+                                        'actual_balance' => $cov_det->actual_balance + $paydesk->amount
                         
                                     ]);
                 
