@@ -19,7 +19,8 @@ class ProductsImport implements ToCollection, WithHeadingRow
     public function __construct()
     {
         $this->states = State::pluck('id','name');
-        $this->offices = Office::pluck('id','name');
+        //$this->offices = Office::pluck('id','name');
+        $this->offices = Office::select('id','name')->orderBy('id')->get();
     }
 
     public function collection(Collection $rows)
@@ -41,10 +42,19 @@ class ProductsImport implements ToCollection, WithHeadingRow
 
             ]);
 
-            foreach ($this->offices as $index => $office) {
+            /*foreach ($this->offices as $index => $office) {
 
                 $product->offices()->attach($office,[
                     'stock' => $row[$index],
+                    'alerts' => 1
+                ]);
+
+            }*/
+
+            foreach ($this->offices as $office) {
+
+                $product->offices()->attach($office->id,[
+                    'stock' => $row[$office->name],
                     'alerts' => 1
                 ]);
 
