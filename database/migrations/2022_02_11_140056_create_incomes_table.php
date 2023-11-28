@@ -16,7 +16,7 @@ class CreateIncomesTable extends Migration
         Schema::create('incomes', function (Blueprint $table) {
             $table->id();
             $table->integer('quantity');
-            $table->decimal('total',10,2);
+            $table->decimal('total',60,30);
             $table->string('office',45);
             $table->enum('type',['importacion','compra','devolucion']);
             $table->string('relation',100);

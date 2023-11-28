@@ -16,11 +16,11 @@ class CreateSalesTable extends Migration
         Schema::create('sales', function (Blueprint $table) {
             $table->id();
             $table->integer('quantity');
-            $table->decimal('total',10,2);
-            $table->decimal('utility',10,2);
+            $table->decimal('total',60,30);
+            $table->decimal('utility',60,30);
             $table->string('office',45);
-            $table->decimal('cash',10,2);
-            $table->decimal('change',10,2);
+            $table->decimal('cash',60,30);
+            $table->decimal('change',60,30);
             $table->foreignId('state_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('product_id')->constrained()->onUpdate('cascade')->onDelete('cascade');

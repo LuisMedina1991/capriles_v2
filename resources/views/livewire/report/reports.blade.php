@@ -133,7 +133,7 @@
                                             <td class="text-center"><h6>INGRESO</h6></td>
                                             <td class="text-center"><h6>{{ $i->product->code }}</h6></td>
                                             <td class="text-center"><h6>{{ $i->product->brand }} | {{$i->product->threshing}} | {{$i->product->tarp}}</h6></td>
-                                            <td class="text-center"><h6>${{ $i->product->cost }}</h6></td>
+                                            <td class="text-center"><h6>${{ number_format($i->product->cost,2) }}</h6></td>
                                             <td class="text-center"><h6>{{ $i->pf }}</h6></td>
                                             <td class="text-center"><h6>{{ $i->quantity }}</h6></td>
                                             <td class="text-center"><h6>${{ number_format($i->total,2) }}</h6></td>
@@ -147,7 +147,7 @@
                                             <td class="text-center"><h6>TRASPASO</h6></td>
                                             <td class="text-center"><h6>{{ $t->product->code }}</h6></td>
                                             <td class="text-center"><h6>{{ $t->product->brand }} | {{$t->product->threshing}} | {{$t->product->tarp}}</h6></td>
-                                            <td class="text-center"><h6>${{ $t->product->cost }}</h6></td>
+                                            <td class="text-center"><h6>${{ number_format($t->product->cost,2) }}</h6></td>
                                             <td class="text-center"><h6>{{ $t->pf }}</h6></td>
                                             <td class="text-center"><h6>{{ $t->quantity }}</h6></td>
                                             <td class="text-center"><h6>${{ number_format($t->total,2) }}</h6></td>
@@ -161,7 +161,7 @@
                                             <td class="text-center"><h6>VENTA</h6></td>
                                             <td class="text-center"><h6>{{ $s->product->code }}</h6></td>
                                             <td class="text-center"><h6>{{ $s->product->brand }} | {{$s->product->threshing}} | {{$s->product->tarp}}</h6></td>
-                                            <td class="text-center"><h6>${{ $s->product->cost }}</h6></td>
+                                            <td class="text-center"><h6>${{ number_format($s->product->cost,2) }}</h6></td>
                                             <td class="text-center"><h6>{{ $s->pf }}</h6></td>
                                             <td class="text-center"><h6>{{ $s->quantity }}</h6></td>
                                             <td class="text-center"><h6>${{ number_format($s->total,2) }}</h6></td>
@@ -211,7 +211,7 @@
                                         <tr>
                                             <td class="text-center"><h6>{{ $i->product->code }}</h6></td>
                                             <td class="text-center"><h6>{{ $i->product->brand }} | {{$i->product->threshing}} | {{$i->product->tarp}}</h6></td>
-                                            <td class="text-center"><h6>${{ $i->product->cost }}</h6></td>
+                                            <td class="text-center"><h6>${{ number_format($i->product->cost,2) }}</h6></td>
                                             <td class="text-center"><h6>{{ $i->pf }}</h6></td>
                                             <td class="text-center"><h6>{{ $i->quantity }}</h6></td>
                                             <td class="text-center"><h6>${{ number_format($i->total,2) }}</h6></td>
@@ -272,7 +272,7 @@
                                         <tr>
                                             <td class="text-center"><h6>{{ $t->product->code }}</h6></td>
                                             <td class="text-center"><h6>{{ $t->product->brand }} | {{$t->product->threshing}} | {{$t->product->tarp}}</h6></td>
-                                            <td class="text-center"><h6>${{ $t->product->cost }}</h6></td>
+                                            <td class="text-center"><h6>${{ number_format($t->product->cost,2) }}</h6></td>
                                             <td class="text-center"><h6>{{ $t->pf }}</h6></td>
                                             <td class="text-center"><h6>{{ $t->quantity }}</h6></td>
                                             <td class="text-center"><h6>${{ number_format($t->total,2) }}</h6></td>
@@ -335,12 +335,12 @@
                                         <tr>
                                             <td class="text-center"><h6>{{ $s->product->code }}</h6></td>
                                             <td class="text-center"><h6>{{ $s->product->brand }} | {{$s->product->threshing}} | {{$s->product->tarp}}</h6></td>
-                                            <td class="text-center"><h6>${{ $s->product->cost }}</h6></td>
+                                            <td class="text-center"><h6>${{ number_format($s->product->cost,2) }}</h6></td>
                                             {{--<td class="text-center"><h6>${{ $s->product->price }}</h6></td>--}}
-                                            <td class="text-center"><h6>${{ $s->total / $s->quantity}}</h6></td>
+                                            <td class="text-center"><h6>${{ number_format($s->total / $s->quantity,2) }}</h6></td>
                                             <td class="text-center"><h6>{{ $s->quantity }}</h6></td>
                                             <td class="text-center"><h6>${{ number_format($s->total,2) }}</h6></td>
-                                            <td class="text-center"><h6>${{ $s->utility }}</h6></td>
+                                            <td class="text-center"><h6>${{ number_format($s->utility,2) }}</h6></td>
                                             <td class="text-center"><h6>{{ $s->office }}</h6></td>
                                             <td class="text-center"><h6>{{ $s->pf }}</h6></td>
                                             <td class="text-center"><h6>{{ $s->user }}</h6></td>

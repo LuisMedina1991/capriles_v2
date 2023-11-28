@@ -16,7 +16,7 @@ class CreateTransfersTable extends Migration
         Schema::create('transfers', function (Blueprint $table) {
             $table->id();
             $table->integer('quantity');
-            $table->decimal('total',10,2);
+            $table->decimal('total',60,30);
             $table->string('from_office',45);
             $table->string('to_office',45);
             $table->foreignId('state_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
