@@ -187,8 +187,8 @@ class Products extends Component
         $this->trilla = $product->threshing;
         $this->lona = $product->tarp;
         $this->code = $product->code;
-        $this->cost = number_format($product->cost,2);
-        $this->price = number_format($product->price,2);
+        $this->cost = floatval($product->cost);
+        $this->price = floatval($product->price);
         $this->catId = $pivot->cat;
         $this->subId = $pivot->sub;
         $this->state = $product->state_id;
