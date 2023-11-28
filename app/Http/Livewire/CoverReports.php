@@ -144,17 +144,28 @@ class CoverReports extends Component
     {
         $last_utility_record = $this->uti->details->last();
 
+        if ($last_utility_record) {
+
+            if ($last_utility_record->actual_balance == $last_utility_record->previus_day_balance) {
+
+                $this->emit('cover-error', 'No se ha ingresado la utilidad del dia a la ultima caratula creada.');
+                return;
+
+            }
+
+        }
+
         if ($this->reportRange != 0) {
             
             $this->emit('cover-error', 'Seleccione la opcion "Caratula del Dia".');
             return;
 
-        } elseif ($last_utility_record->actual_balance == $last_utility_record->previus_day_balance) {
+        } /*elseif ($last_utility_record->actual_balance == $last_utility_record->previus_day_balance) {
 
             $this->emit('cover-error', 'No se ha ingresado la utilidad del dia a la ultima caratula creada.');
             return;
 
-        } elseif (count($this->details) > 0) {
+        }*/ elseif (count($this->details) > 0) {
 
             $this->emit('cover-error', 'Ya se creo caratula para hoy.');
             return;
