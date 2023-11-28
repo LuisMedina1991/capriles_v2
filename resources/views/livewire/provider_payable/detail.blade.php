@@ -15,8 +15,8 @@
                         <thead class="text-white" style="background: #3B3F5C">
                             <tr>
                                 <th class="table-th text-center text-white">DESCRIPCION</th>
-                                <th class="table-th text-center text-white">MONTO</th>
                                 <th class="table-th text-center text-white">SALDO PREVIO</th>
+                                <th class="table-th text-center text-white">MONTO</th>
                                 <th class="table-th text-center text-white">SALDO ACTUAL</th>
                                 <th class="table-th text-center text-white">FECHA</th>
                                 <th class="table-th text-center text-white">ANULAR</th>
@@ -26,9 +26,9 @@
                             @foreach ($details as $detail)
                                 <tr>
                                     <td class="text-center"><h6>{{$detail->description}}</h6></td>
-                                    <td class="text-center"><h6>{{$detail->amount}}</h6></td>
-                                    <td class="text-center"><h6>{{$detail->previus_balance}}</h6></td>
-                                    <td class="text-center"><h6>{{$detail->actual_balance}}</h6></td>
+                                    <td class="text-center"><h6>${{number_format($detail->previus_balance,2)}}</h6></td>
+                                    <td class="text-center"><h6>${{number_format($detail->amount,2)}}</h6></td>
+                                    <td class="text-center"><h6>${{number_format($detail->actual_balance,2)}}</h6></td>
                                     <td class="text-center"><h6>{{\Carbon\Carbon::parse($detail->created_at)->format('d-m-Y')}}</h6></td>
                                     @if(Carbon\Carbon::parse($detail->created_at)->format('d-m-Y') == Carbon\Carbon::today()->format('d-m-Y'))
                                     @can('cancel_movement')
