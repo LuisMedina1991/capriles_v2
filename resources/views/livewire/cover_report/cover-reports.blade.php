@@ -31,28 +31,10 @@
                                     </select>
                                 </div>
                             </div>
-                            @if($reportRange == 3)
-                            <div class="col-sm-12">
-                                <h6>Modificar Fecha?</h6>
-                                <div class="form-group">
-                                    <select wire:model="end_month_option" class="form-control">
-                                        <option value="Elegir">Elegir</option>
-                                        <option value="0">No</option>
-                                        <option value="1">Si</option>
-                                    </select>
-                                    @error('end_month_option')
-                                        <span class="text-danger er">{{ $message }}</span>
-                                    @enderror
-                                </div>
-                            </div>
-                            @endif
                             <div class="col-sm-12 mt-2">
                                 @switch($reportRange)
                                     @case(2)
                                         <h6>Fecha a Modificar</h6>
-                                    @break
-                                    @case(3)
-                                        <h6>Nueva Fecha a Asignar</h6>
                                     @break
                                     @default
                                         <h6>Fecha de Caratula</h6>
@@ -98,15 +80,17 @@
                             </div>
                             <br>
                             @endcan
+                            @if($uti_det)
                             @can('cerrar_mes')
                             <div class="col-sm-12">
                                 {{--<a href="javascript:void(0)" wire:click.prevent="Close()" class="btn btn-dark btn-block {{$reportRange != 0 || count($details) < 1 ? 'disabled' : ''}}">Cerrar Mes</a>--}}
                                 <a href="javascript:void(0)" onclick="Message(5)" 
-                                class="btn btn-dark btn-block {{$reportRange != 3 || count($details) < 1 || $end_month_option == 'Elegir' ? 'disabled' : ''}}"
+                                class="btn btn-dark btn-block {{$reportRange != 3 || count($details) < 1 || $uti_det->actual_balance == $uti_det->previus_day_balance ? 'disabled' : ''}}"
                                 title="Iniciar nuevo balance mensual">Cerrar Mes</a>
                             </div>
                             <br>
                             @endcan
+                            @endif
                             <div class="col-sm-12">
                                 <a href="{{ url('cover_report/pdf' . '/' . $reportRange . '/' . $date) }}" 
                                 class="btn btn-dark btn-block {{count($details) < 1 || $reportRange == 2 ? 'disabled' : ''}}" target="_blank">
