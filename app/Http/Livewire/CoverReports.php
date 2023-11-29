@@ -209,8 +209,6 @@ class CoverReports extends Component
 
     public function EnterUtility()
     {
-        $paydesk = Paydesk::orderBy('id', 'asc')->whereBetween('created_at', [$this->date1, $this->date2])->where('type','Ventas')->get();
-
         if ($this->reportRange != 0) {
 
             $this->emit('cover-error','Seleccione la opcion "Caratula del Dia".');
@@ -226,17 +224,32 @@ class CoverReports extends Component
             $this->emit('cover-error', 'No se han realizado movimientos aun.');
             return;
 
-        } elseif (count($paydesk) == 0) {
+        } /*elseif (count($paydesk) == 0) {
 
             $this->emit('cover-error', 'Primero ingrese las ventas del dia desde caja general.');
             return;
 
-        } elseif ($this->uti_det->actual_balance != $this->uti_det->previus_day_balance) {
+        }*/ elseif ($this->uti_det->actual_balance != $this->uti_det->previus_day_balance) {
 
             $this->emit('cover-error','Ya se ha ingresado la utilidad neta del dia.');
             return;
 
         } else {
+
+            $sales = Sale::orderBy('id', 'asc')->whereBetween('created_at',[$this->date1,$this->date2])->where('state_id',8)->get();
+
+            if (count($sales) > 0) {
+
+                $paydesk = Paydesk::orderBy('id', 'asc')->whereBetween('created_at', [$this->date1, $this->date2])->where('type','Ventas')->get();
+
+                if (count($paydesk) == 0) {
+
+                    $this->emit('cover-error', 'Primero ingrese las ventas del dia desde caja general.');
+                    return;
+
+                }
+
+            }
 
             DB::beginTransaction();
                     
