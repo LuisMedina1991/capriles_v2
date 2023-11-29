@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
 
 class CoverReports extends Component
 {
-    public $componentName,$all_cover_details,$details,$reportRange,$date,$end_month_option,$amount;
+    public $componentName,$all_cover_details,$details,$reportRange,$date,$amount;
     public $sum1,$sum2,$sum3,$sum4,$sum5,$sum6,$sum7,$sum8,$sum9,$sum10;
     public $uti,$uti_det,$date1,$date2,$date3;
 
@@ -28,7 +28,6 @@ class CoverReports extends Component
         $this->date = '';
         $this->date3 = '';
         $this->amount = '';
-        $this->end_month_option = 'Elegir';
         $this->all_cover_details = CoverDetail::all();
         $this->date1 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 00:00:00';
         $this->date2 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 23:59:59';
@@ -81,12 +80,6 @@ class CoverReports extends Component
 
             $this->emit('report-error', 'Seleccione ambas fechas.');
             $this->details = [];
-            return;
-        }
-
-        if($this->reportRange == 3 && $this->end_month_option == 1 && $this->date == ''){
-
-            $this->emit('report-error', 'Seleccione una fecha.');
             return;
         }
 
@@ -209,8 +202,6 @@ class CoverReports extends Component
 
     public function EnterUtility()
     {
-        $paydesk = Paydesk::orderBy('id', 'asc')->whereBetween('created_at', [$this->date1, $this->date2])->where('type','Ventas')->get();
-
         if ($this->reportRange != 0) {
 
             $this->emit('cover-error','Seleccione la opcion "Caratula del Dia".');
@@ -226,12 +217,12 @@ class CoverReports extends Component
             $this->emit('cover-error', 'No se han realizado movimientos aun.');
             return;
 
-        } elseif (count($paydesk) == 0) {
+        } /*elseif (count($paydesk) == 0) {
 
             $this->emit('cover-error', 'Primero ingrese las ventas del dia desde caja general.');
             return;
 
-        } elseif ($this->uti_det->actual_balance != $this->uti_det->previus_day_balance) {
+        }*/ elseif ($this->uti_det->actual_balance != $this->uti_det->previus_day_balance) {
 
             $this->emit('cover-error','Ya se ha ingresado la utilidad neta del dia.');
             return;
@@ -553,13 +544,10 @@ class CoverReports extends Component
         
         }*/ elseif ($this->uti_det->actual_balance == $this->uti_det->previus_day_balance) {
             
-            $this->resetValidation();
             $this->emit('cover-error', 'No se ha ingresado la utilidad del dia.');
             return;
         
         } else {
-
-            $this->resetValidation();
 
             DB::beginTransaction();
                     
@@ -678,6 +666,7 @@ class CoverReports extends Component
                 $cap = Cover::firstWhere('description','capital de trabajo inicial');
                 $uti = Cover::firstWhere('description','utilidad acumulada');
                 $fact = Cover::firstWhere('description','facturas 6% acumulado');
+                $bill = Bill::firstWhere('type','acumulativa');
 
                 $cap->update([
                     
