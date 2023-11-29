@@ -98,15 +98,17 @@
                             </div>
                             <br>
                             @endcan
+                            @if($uti_det)
                             @can('cerrar_mes')
                             <div class="col-sm-12">
                                 {{--<a href="javascript:void(0)" wire:click.prevent="Close()" class="btn btn-dark btn-block {{$reportRange != 0 || count($details) < 1 ? 'disabled' : ''}}">Cerrar Mes</a>--}}
                                 <a href="javascript:void(0)" onclick="Message(5)" 
-                                class="btn btn-dark btn-block {{$reportRange != 3 || count($details) < 1 || $end_month_option == 'Elegir' ? 'disabled' : ''}}"
+                                class="btn btn-dark btn-block {{$reportRange != 3 || count($details) < 1 || $end_month_option == 'Elegir' || $uti_det->actual_balance == $uti_det->previus_day_balance ? 'disabled' : ''}}"
                                 title="Iniciar nuevo balance mensual">Cerrar Mes</a>
                             </div>
                             <br>
                             @endcan
+                            @endif
                             <div class="col-sm-12">
                                 <a href="{{ url('cover_report/pdf' . '/' . $reportRange . '/' . $date) }}" 
                                 class="btn btn-dark btn-block {{count($details) < 1 || $reportRange == 2 ? 'disabled' : ''}}" target="_blank">

@@ -58,7 +58,7 @@ class CoverReports extends Component
         $this->sum9 = 0;
         $this->sum10 = 0;
 
-        if($this->reportRange == 0){
+        if($this->reportRange == 0 || $this->reportRange == 3){
 
             $fecha1 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 00:00:00';
             $fecha2 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 23:59:59';
@@ -237,6 +237,21 @@ class CoverReports extends Component
             return;
 
         } else {
+
+            $sales = Sale::orderBy('id', 'asc')->whereBetween('created_at',[$this->date1,$this->date2])->where('state_id',8)->get();
+
+            if (count($sales) > 0) {
+
+                $paydesk = Paydesk::orderBy('id', 'asc')->whereBetween('created_at', [$this->date1, $this->date2])->where('type','Ventas')->get();
+
+                if (count($paydesk) == 0) {
+
+                    $this->emit('cover-error', 'Primero ingrese las ventas del dia desde caja general.');
+                    return;
+
+                }
+
+            }
 
             DB::beginTransaction();
                     
@@ -520,7 +535,7 @@ class CoverReports extends Component
             $this->emit('cover-error', 'No se ha encontrado caratula del dia.');
             return;
 
-        } elseif ($this->reportRange == 3 && $this->end_month_option == 'Elegir') {
+        } elseif ($this->end_month_option == 'Elegir') {
             
             $this->addError('end_month_option', 'Seleccione una opcion');
             return;
@@ -549,6 +564,115 @@ class CoverReports extends Component
             DB::beginTransaction();
                     
             try {
+
+                if ($this->end_month_option == 1) {
+
+                    $today = Carbon::today()->format('Y-m-d');
+                    $from = Carbon::parse($this->date)->format('Y-m-d'). ' 00:00:00';
+                    $to = Carbon::parse($this->date)->format('Y-m-d'). ' 23:59:59';
+                    $time = Carbon::now();
+
+                    $target_detail = $this->all_cover_details->whereBetween('created_at', [$from, $to]);
+
+                    if (count($target_detail) > 0) {
+
+                        $this->emit('cover-error', 'Ya existe una caratula con esa fecha.');
+                        return;
+
+                    }
+
+                    if ($this->date >= $today) {
+
+                        $this->emit('cover-error', 'No se permite asignar una fecha igual o superior a la de hoy.');
+                        return;
+
+                    }
+
+                    $details_table = Detail::whereBetween('created_at', [$from, $to])->orderBy('id', 'asc')->get();
+                    $incomes_table = Income::whereBetween('created_at', [$from, $to])->orderBy('id', 'asc')->get();
+                    $sales_table = Sale::whereBetween('created_at', [$from, $to])->orderBy('id', 'asc')->get();
+                    $transfers_table = Transfer::whereBetween('created_at', [$from, $to])->orderBy('id', 'asc')->get();
+                    $paydesks_table = Paydesk::whereBetween('created_at', [$from, $to])->orderBy('id', 'asc')->get();
+
+                    if (count($details_table) > 0) {
+
+                        foreach ($details_table as $dt) {
+
+                            $dt->update([
+                            
+                                'created_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'updated_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                    
+                            ]);
+                        }
+                    }
+
+                    if (count($incomes_table) > 0) {
+
+                        foreach ($incomes_table as $it) {
+
+                            $it->update([
+                            
+                                'created_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'updated_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                    
+                            ]);
+                        }
+                    }
+
+                    if (count($sales_table) > 0) {
+
+                        foreach ($sales_table as $st) {
+
+                            $st->update([
+                            
+                                'created_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'updated_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                    
+                            ]);
+                        }
+                    }
+
+                    if (count($transfers_table) > 0) {
+
+                        foreach ($transfers_table as $tt) {
+
+                            $tt->update([
+                            
+                                'created_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'updated_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                    
+                            ]);
+                        }
+                    }
+
+                    if (count($paydesks_table) > 0) {
+
+                        foreach ($paydesks_table as $pt) {
+
+                            $pt->update([
+                            
+                                'created_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'updated_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                    
+                            ]);
+                        }
+                    }
+
+                    if (count($this->details) > 0) {
+
+                        foreach ($this->details as $cdt) {
+
+                            $cdt->update([
+                            
+                                'created_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'updated_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                    
+                            ]);
+                        }
+                    }
+
+                }
 
                 $bill = Bill::firstWhere('type','acumulativa');
                 $cap = Cover::firstWhere('description','capital de trabajo inicial');
@@ -580,7 +704,7 @@ class CoverReports extends Component
                 ]);
 
                 DB::commit();
-                $this->emit('item-added','Registro Exitoso');
+                $this->emit('item-added','Registro Exitoso.');
                 $this->mount();
                 $this->render();
 
