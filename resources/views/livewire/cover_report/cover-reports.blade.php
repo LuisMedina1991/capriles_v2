@@ -31,22 +31,7 @@
                                     </select>
                                 </div>
                             </div>
-                            @if($reportRange == 3)
-                            <div class="col-sm-12">
-                                <h6>Asignar Nueva Fecha?</h6>
-                                <div class="form-group">
-                                    <select wire:model="end_month_option" class="form-control">
-                                        <option value="Elegir">Elegir</option>
-                                        <option value="0">No</option>
-                                        <option value="1">Si</option>
-                                    </select>
-                                    @error('end_month_option')
-                                        <span class="text-danger er">{{ $message }}</span>
-                                    @enderror
-                                </div>
-                            </div>
-                            @endif
-                            <div class="col-sm-12 mt-2">
+                            <div class="col-sm-12 mt-2 {{$reportRange == 0 || ($reportRange == 3 && $end_month_option != 1) ? 'invisible' : ''}}">
                                 @switch($reportRange)
                                     @case(2)
                                         <h6>Fecha a Modificar</h6>
@@ -67,6 +52,21 @@
                                     <input type="text" wire:model="date_field_2" class="form-control flatpickr" placeholder="Click para elegir">
                                 </div>
                             </div>
+                            @if($reportRange == 3)
+                            <div class="col-sm-12">
+                                <h6>Asignar Nueva Fecha?</h6>
+                                <div class="form-group">
+                                    <select wire:model="end_month_option" class="form-control">
+                                        <option value="Elegir">Elegir</option>
+                                        <option value="0">No</option>
+                                        <option value="1">Si</option>
+                                    </select>
+                                    @error('end_month_option')
+                                        <span class="text-danger er">{{ $message }}</span>
+                                    @enderror
+                                </div>
+                            </div>
+                            @endif
                             @if($uti_det)
                             @if($uti_det->actual_balance == $uti_det->previus_day_balance)
                             @can('ingresar_utilidad')

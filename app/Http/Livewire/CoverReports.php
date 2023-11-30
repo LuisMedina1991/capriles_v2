@@ -140,6 +140,12 @@ class CoverReports extends Component
         'CloseMonth' => 'CloseMonth',
     ];
 
+    public function updatedreportRange()
+    {
+        $this->date_field_1 = '';
+        $this->date_field_2 = '';
+    }
+
     public function CreateCover()
     {
         $last_utility_record = $this->uti->details->last();
