@@ -19,7 +19,7 @@ class CoverReports extends Component
 {
     public $componentName,$all_cover_details,$details,$reportRange,$amount,$end_month_option ;
     public $sum1,$sum2,$sum3,$sum4,$sum5,$sum6,$sum7,$sum8,$sum9,$sum10;
-    public $uti,$uti_det,$from,$to,$date_field_1,$date_field_2;
+    public $uti,$uti_det,$now,$from,$to,$date_field_1,$date_field_2;
 
     public function mount()
     {
@@ -30,8 +30,9 @@ class CoverReports extends Component
         $this->amount = '';
         $this->end_month_option = 'Elegir';
         $this->all_cover_details = CoverDetail::all();
-        $this->from = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 00:00:00';
-        $this->to = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 23:59:59';
+        $this->now = Carbon::now();
+        $this->from = $this->now->format('Y-m-d') . ' 00:00:00';
+        $this->to = $this->now->format('Y-m-d') . ' 23:59:59';
         $this->uti = Cover::firstWhere('description','utilidad acumulada');
         $this->uti_det = $this->uti->details->where('cover_id',$this->uti->id)->whereBetween('created_at',[$this->from, $this->to])->first();
     }
@@ -60,13 +61,13 @@ class CoverReports extends Component
 
         if($this->reportRange == 0 || $this->reportRange == 3){
 
-            $fecha1 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 00:00:00';
-            $fecha2 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 23:59:59';
+            $fecha1 = $this->now->format('Y-m-d') . ' 00:00:00';
+            $fecha2 = $this->now->format('Y-m-d') . ' 23:59:59';
 
         }else{
 
-            $fecha1 = Carbon::parse($this->date_field_1)->format('Y-m-d'). ' 00:00:00';
-            $fecha2 = Carbon::parse($this->date_field_1)->format('Y-m-d'). ' 23:59:59';
+            $fecha1 = $this->date_field_1. ' 00:00:00';
+            $fecha2 = $this->date_field_1. ' 23:59:59';
 
         }
 
@@ -362,7 +363,7 @@ class CoverReports extends Component
 
     public function ChangeCoverDate()
     {
-        $today = Carbon::today()->format('Y-m-d');
+        $today = Carbon::now();
 
         if ($this->reportRange != 2) {
 
@@ -384,7 +385,7 @@ class CoverReports extends Component
             $this->emit('cover-error', 'Ambas fechas son iguales.');
             return;
         
-        } elseif ($this->date_field_2 > $today) {
+        } elseif ($this->date_field_2 > $today->format('Y-m-d')) {
 
             $this->emit('cover-error', 'No se permite asignar una fecha superior a la de hoy.');
             return;
@@ -396,90 +397,89 @@ class CoverReports extends Component
         
         } else {
 
-            $last = Carbon::parse($this->all_cover_details->last()->created_at)->format('Y-m-d');
+            $last_cover_detail_registration_date = Carbon::parse($this->all_cover_details->last()->created_at)->format('Y-m-d');
         
-            if ($last == $this->date_field_1) {
+            if ($last_cover_detail_registration_date == $this->date_field_1) {
 
-                $time = Carbon::now();
-                $fecha1 = Carbon::parse($this->date_field_1)->format('Y-m-d'). ' 00:00:00';
-                $fecha2 = Carbon::parse($this->date_field_1)->format('Y-m-d'). ' 23:59:59';
-                $fecha3 = Carbon::parse($this->date_field_2)->format('Y-m-d'). ' 00:00:00';
-                $fecha4 = Carbon::parse($this->date_field_2)->format('Y-m-d'). ' 23:59:59';
+                $from_1 = $this->date_field_1. ' 00:00:00';
+                $to_1 = $this->date_field_1. ' 23:59:59';
+                $from_2 = $this->date_field_2. ' 00:00:00';
+                $to_2 = $this->date_field_2. ' 23:59:59';
 
-                $target_detail = $this->all_cover_details->whereBetween('created_at', [$fecha3, $fecha4]);
+                $target_detail = $this->all_cover_details->whereBetween('created_at', [$from_2, $to_2]);
 
                 if (count($target_detail) == 0) {
 
-                    $details_table = Detail::whereBetween('created_at', [$fecha1, $fecha2])->orderBy('id', 'asc')->get();
-                    $incomes_table = Income::whereBetween('created_at', [$fecha1, $fecha2])->orderBy('id', 'asc')->get();
-                    $sales_table = Sale::whereBetween('created_at', [$fecha1, $fecha2])->orderBy('id', 'asc')->get();
-                    $transfers_table = Transfer::whereBetween('created_at', [$fecha1, $fecha2])->orderBy('id', 'asc')->get();
-                    $paydesks_table = Paydesk::whereBetween('created_at', [$fecha1, $fecha2])->orderBy('id', 'asc')->get();
+                    $current_details = Detail::whereBetween('created_at', [$from_1, $to_1])->orderBy('id', 'asc')->get();
+                    $current_incomes = Income::whereBetween('created_at', [$from_1, $to_1])->orderBy('id', 'asc')->get();
+                    $current_sales = Sale::whereBetween('created_at', [$from_1, $to_1])->orderBy('id', 'asc')->get();
+                    $current_transfers = Transfer::whereBetween('created_at', [$from_1, $to_1])->orderBy('id', 'asc')->get();
+                    $current_paydesk_movements = Paydesk::whereBetween('created_at', [$from_1, $to_1])->orderBy('id', 'asc')->get();
                     
                     DB::beginTransaction();
                     
                     try {
 
-                        if (count($details_table) > 0) {
+                        if (count($current_details) > 0) {
 
-                            foreach ($details_table as $dt) {
+                            foreach ($current_details as $current_detail) {
 
-                                $dt->update([
+                                $current_detail->update([
                                 
-                                    'created_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                    'updated_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'created_at' => $this->date_field_2 . ' ' . $today->hour . ':' . $today->minute . ':' . $today->second,
+                                    'updated_at' => $this->date_field_2 . ' ' . $today->hour . ':' . $today->minute . ':' . $today->second,
                         
                                 ]);
                             }
                         }
 
-                        if (count($incomes_table) > 0) {
+                        if (count($current_incomes) > 0) {
 
-                            foreach ($incomes_table as $it) {
+                            foreach ($current_incomes as $current_income) {
 
-                                $it->update([
+                                $current_income->update([
                                 
-                                    'created_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                    'updated_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'created_at' => $this->date_field_2 . ' ' . $today->hour . ':' . $today->minute . ':' . $today->second,
+                                    'updated_at' => $this->date_field_2 . ' ' . $today->hour . ':' . $today->minute . ':' . $today->second,
                         
                                 ]);
                             }
                         }
 
-                        if (count($sales_table) > 0) {
+                        if (count($current_sales) > 0) {
 
-                            foreach ($sales_table as $st) {
+                            foreach ($current_sales as $current_sale) {
 
-                                $st->update([
+                                $current_sale->update([
                                 
-                                    'created_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                    'updated_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'created_at' => $this->date_field_2 . ' ' . $today->hour . ':' . $today->minute . ':' . $today->second,
+                                    'updated_at' => $this->date_field_2 . ' ' . $today->hour . ':' . $today->minute . ':' . $today->second,
                         
                                 ]);
                             }
                         }
 
-                        if (count($transfers_table) > 0) {
+                        if (count($current_transfers) > 0) {
 
-                            foreach ($transfers_table as $tt) {
+                            foreach ($current_transfers as $current_transfer) {
 
-                                $tt->update([
+                                $current_transfer->update([
                                 
-                                    'created_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                    'updated_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'created_at' => $this->date_field_2 . ' ' . $today->hour . ':' . $today->minute . ':' . $today->second,
+                                    'updated_at' => $this->date_field_2 . ' ' . $today->hour . ':' . $today->minute . ':' . $today->second,
                         
                                 ]);
                             }
                         }
 
-                        if (count($paydesks_table) > 0) {
+                        if (count($current_paydesk_movements) > 0) {
 
-                            foreach ($paydesks_table as $pt) {
+                            foreach ($current_paydesk_movements as $current_paydesk_movement) {
 
-                                $pt->update([
+                                $current_paydesk_movement->update([
                                 
-                                    'created_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                    'updated_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'created_at' => $this->date_field_2 . ' ' . $today->hour . ':' . $today->minute . ':' . $today->second,
+                                    'updated_at' => $this->date_field_2 . ' ' . $today->hour . ':' . $today->minute . ':' . $today->second,
                         
                                 ]);
                             }
@@ -487,12 +487,12 @@ class CoverReports extends Component
 
                         if (count($this->details) > 0) {
 
-                            foreach ($this->details as $cdt) {
+                            foreach ($this->details as $detail) {
 
-                                $cdt->update([
+                                $detail->update([
                                 
-                                    'created_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                    'updated_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'created_at' => $this->date_field_2 . ' ' . $today->hour . ':' . $today->minute . ':' . $today->second,
+                                    'updated_at' => $this->date_field_2 . ' ' . $today->hour . ':' . $today->minute . ':' . $today->second,
                         
                                 ]);
                             }
@@ -570,11 +570,9 @@ class CoverReports extends Component
             try {
 
                 if ($this->end_month_option == 1) {
-
-                    $today = Carbon::today()->format('Y-m-d');
-                    $from = Carbon::parse($this->date_field_1)->format('Y-m-d'). ' 00:00:00';
-                    $to = Carbon::parse($this->date_field_1)->format('Y-m-d'). ' 23:59:59';
-                    $time = Carbon::now();
+                    
+                    $from = $this->date_field_1. ' 00:00:00';
+                    $to = $this->date_field_1. ' 23:59:59';
 
                     $target_detail = $this->all_cover_details->whereBetween('created_at', [$from, $to]);
 
@@ -585,79 +583,79 @@ class CoverReports extends Component
 
                     }
 
-                    if ($this->date_field_1 >= $today) {
+                    if ($this->date_field_1 >= $this->now->format('Y-m-d')) {
 
                         $this->emit('cover-error', 'No se permite asignar una fecha igual o superior a la de hoy.');
                         return;
 
                     }
 
-                    $details_table = Detail::whereBetween('created_at', [$from, $to])->orderBy('id', 'asc')->get();
-                    $incomes_table = Income::whereBetween('created_at', [$from, $to])->orderBy('id', 'asc')->get();
-                    $sales_table = Sale::whereBetween('created_at', [$from, $to])->orderBy('id', 'asc')->get();
-                    $transfers_table = Transfer::whereBetween('created_at', [$from, $to])->orderBy('id', 'asc')->get();
-                    $paydesks_table = Paydesk::whereBetween('created_at', [$from, $to])->orderBy('id', 'asc')->get();
+                    $current_details = Detail::whereBetween('created_at', [$this->from, $this->to])->orderBy('id', 'asc')->get();
+                    $current_incomes = Income::whereBetween('created_at', [$this->from, $this->to])->orderBy('id', 'asc')->get();
+                    $current_sales = Sale::whereBetween('created_at', [$this->from, $this->to])->orderBy('id', 'asc')->get();
+                    $current_transfers = Transfer::whereBetween('created_at', [$this->from, $this->to])->orderBy('id', 'asc')->get();
+                    $current_paydesk_movements = Paydesk::whereBetween('created_at', [$this->from, $this->to])->orderBy('id', 'asc')->get();
 
-                    if (count($details_table) > 0) {
+                    if (count($current_details) > 0) {
 
-                        foreach ($details_table as $dt) {
+                        foreach ($current_details as $current_detail) {
 
-                            $dt->update([
+                            $current_detail->update([
                             
-                                'created_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'created_at' => $this->date_field_1 . ' ' . $this->now->hour . ':' . $this->now->minute . ':' . $this->now->second,
+                                'updated_at' => $this->date_field_1 . ' ' . $this->now->hour . ':' . $this->now->minute . ':' . $this->now->second,
                     
                             ]);
                         }
                     }
 
-                    if (count($incomes_table) > 0) {
+                    if (count($current_incomes) > 0) {
 
-                        foreach ($incomes_table as $it) {
+                        foreach ($current_incomes as $current_income) {
 
-                            $it->update([
+                            $current_income->update([
                             
-                                'created_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'created_at' => $this->date_field_1 . ' ' . $this->now->hour . ':' . $this->now->minute . ':' . $this->now->second,
+                                'updated_at' => $this->date_field_1 . ' ' . $this->now->hour . ':' . $this->now->minute . ':' . $this->now->second,
                     
                             ]);
                         }
                     }
 
-                    if (count($sales_table) > 0) {
+                    if (count($current_sales) > 0) {
 
-                        foreach ($sales_table as $st) {
+                        foreach ($current_sales as $current_sale) {
 
-                            $st->update([
+                            $current_sale->update([
                             
-                                'created_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'created_at' => $this->date_field_1 . ' ' . $this->now->hour . ':' . $this->now->minute . ':' . $this->now->second,
+                                'updated_at' => $this->date_field_1 . ' ' . $this->now->hour . ':' . $this->now->minute . ':' . $this->now->second,
                     
                             ]);
                         }
                     }
 
-                    if (count($transfers_table) > 0) {
+                    if (count($current_transfers) > 0) {
 
-                        foreach ($transfers_table as $tt) {
+                        foreach ($current_transfers as $current_transfer) {
 
-                            $tt->update([
+                            $current_transfer->update([
                             
-                                'created_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'created_at' => $this->date_field_1 . ' ' . $this->now->hour . ':' . $this->now->minute . ':' . $this->now->second,
+                                'updated_at' => $this->date_field_1 . ' ' . $this->now->hour . ':' . $this->now->minute . ':' . $this->now->second,
                     
                             ]);
                         }
                     }
 
-                    if (count($paydesks_table) > 0) {
+                    if (count($current_paydesk_movements) > 0) {
 
-                        foreach ($paydesks_table as $pt) {
+                        foreach ($current_paydesk_movements as $current_paydesk_movement) {
 
-                            $pt->update([
+                            $current_paydesk_movement->update([
                             
-                                'created_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'created_at' => $this->date_field_1 . ' ' . $this->now->hour . ':' . $this->now->minute . ':' . $this->now->second,
+                                'updated_at' => $this->date_field_1 . ' ' . $this->now->hour . ':' . $this->now->minute . ':' . $this->now->second,
                     
                             ]);
                         }
@@ -665,12 +663,12 @@ class CoverReports extends Component
 
                     if (count($this->details) > 0) {
 
-                        foreach ($this->details as $cdt) {
+                        foreach ($this->details as $detail) {
 
-                            $cdt->update([
+                            $detail->update([
                             
-                                'created_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'created_at' => $this->date_field_1 . ' ' . $this->now->hour . ':' . $this->now->minute . ':' . $this->now->second,
+                                'updated_at' => $this->date_field_1 . ' ' . $this->now->hour . ':' . $this->now->minute . ':' . $this->now->second,
                     
                             ]);
                         }
@@ -678,30 +676,30 @@ class CoverReports extends Component
 
                 }
 
-                $cap = Cover::firstWhere('description','capital de trabajo inicial');
-                $uti = Cover::firstWhere('description','utilidad acumulada');
-                $fact = Cover::firstWhere('description','facturas 6% acumulado');
-                $bill = Bill::firstWhere('type','acumulativa');
+                $capital_cover = Cover::firstWhere('description','capital de trabajo inicial');
+                $utility_cover = Cover::firstWhere('description','utilidad acumulada');
+                $bill_cover = Cover::firstWhere('description','facturas 6% acumulado');
+                $bill_cumulative_record = Bill::firstWhere('type','acumulativa');
 
-                $cap->update([
+                $capital_cover->update([
                     
-                    'balance' => $cap->balance + $uti->balance
+                    'balance' => $capital_cover->balance + $utility_cover->balance
 
                 ]);
 
-                $uti->update([
-                    
-                    'balance' => 0
-
-                ]);
-
-                $fact->update([
+                $utility_cover->update([
                     
                     'balance' => 0
 
                 ]);
 
-                $bill->update([
+                $bill_cover->update([
+                    
+                    'balance' => 0
+
+                ]);
+
+                $bill_cumulative_record->update([
                     
                     'type' => 'normal'
 
