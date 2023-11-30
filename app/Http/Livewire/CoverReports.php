@@ -17,22 +17,23 @@ use Illuminate\Support\Facades\DB;
 
 class CoverReports extends Component
 {
-    public $componentName,$all_cover_details,$details,$reportRange,$date,$amount;
+    public $componentName,$all_cover_details,$details,$reportRange,$amount,$end_month_option ;
     public $sum1,$sum2,$sum3,$sum4,$sum5,$sum6,$sum7,$sum8,$sum9,$sum10;
-    public $uti,$uti_det,$date1,$date2,$date3;
+    public $uti,$uti_det,$from,$to,$date_field_1,$date_field_2;
 
     public function mount()
     {
         $this->componentName = 'caratula';
         $this->reportRange = 0;
-        $this->date = '';
-        $this->date3 = '';
+        $this->date_field_1 = '';
+        $this->date_field_2 = '';
         $this->amount = '';
+        $this->end_month_option = 'Elegir';
         $this->all_cover_details = CoverDetail::all();
-        $this->date1 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 00:00:00';
-        $this->date2 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 23:59:59';
+        $this->from = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 00:00:00';
+        $this->to = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 23:59:59';
         $this->uti = Cover::firstWhere('description','utilidad acumulada');
-        $this->uti_det = $this->uti->details->where('cover_id',$this->uti->id)->whereBetween('created_at',[$this->date1, $this->date2])->first();
+        $this->uti_det = $this->uti->details->where('cover_id',$this->uti->id)->whereBetween('created_at',[$this->from, $this->to])->first();
     }
 
     public function render()
@@ -64,22 +65,28 @@ class CoverReports extends Component
 
         }else{
 
-            $fecha1 = Carbon::parse($this->date)->format('Y-m-d'). ' 00:00:00';
-            $fecha2 = Carbon::parse($this->date)->format('Y-m-d'). ' 23:59:59';
+            $fecha1 = Carbon::parse($this->date_field_1)->format('Y-m-d'). ' 00:00:00';
+            $fecha2 = Carbon::parse($this->date_field_1)->format('Y-m-d'). ' 23:59:59';
 
         }
 
-        if($this->reportRange == 1 && $this->date == ''){
+        if($this->reportRange == 1 && $this->date_field_1 == ''){
 
             $this->emit('report-error', 'Seleccione una fecha.');
             $this->details = [];
             return;
         }
 
-        if($this->reportRange == 2 && ($this->date == '' || $this->date3 == '')){
+        if($this->reportRange == 2 && ($this->date_field_1 == '' || $this->date_field_2 == '')){
 
             $this->emit('report-error', 'Seleccione ambas fechas.');
             $this->details = [];
+            return;
+        }
+
+        if($this->reportRange == 3 && $this->end_month_option == 1 && $this->date_field_1 == ''){
+
+            $this->emit('report-error', 'Seleccione nueva fecha a asignar.');
             return;
         }
 
@@ -229,11 +236,11 @@ class CoverReports extends Component
 
         } else {
 
-            $sales = Sale::orderBy('id', 'asc')->whereBetween('created_at',[$this->date1,$this->date2])->where('state_id',8)->get();
+            $sales = Sale::orderBy('id', 'asc')->whereBetween('created_at',[$this->from,$this->to])->where('state_id',8)->get();
 
             if (count($sales) > 0) {
 
-                $paydesk = Paydesk::orderBy('id', 'asc')->whereBetween('created_at', [$this->date1, $this->date2])->where('type','Ventas')->get();
+                $paydesk = Paydesk::orderBy('id', 'asc')->whereBetween('created_at', [$this->from, $this->to])->where('type','Ventas')->get();
 
                 if (count($paydesk) == 0) {
 
@@ -356,7 +363,7 @@ class CoverReports extends Component
             $this->emit('cover-error', 'Seleccione la opcion "Cambiar Fecha".');
             return;
 
-        } elseif ($this->date == '' || $this->date3 == '') {
+        } elseif ($this->date_field_1 == '' || $this->date_field_2 == '') {
 
             $this->emit('cover-error', 'Seleccione ambas fechas.');
             return;
@@ -366,17 +373,17 @@ class CoverReports extends Component
             $this->emit('cover-error', 'No se ha encontrado caratula para modificar.');
             return;
 
-        } elseif ($this->date == $this->date3) {
+        } elseif ($this->date_field_1 == $this->date_field_2) {
 
             $this->emit('cover-error', 'Ambas fechas son iguales.');
             return;
         
-        } elseif ($this->date3 > $today) {
+        } elseif ($this->date_field_2 > $today) {
 
             $this->emit('cover-error', 'No se permite asignar una fecha superior a la de hoy.');
             return;
         
-        } elseif (($this->date > $this->date3) && ($this->uti_det->actual_balance == $this->uti_det->previus_day_balance)) {
+        } elseif (($this->date_field_1 > $this->date_field_2) && ($this->uti_det->actual_balance == $this->uti_det->previus_day_balance)) {
 
             $this->emit('cover-error', 'No se ha ingresado la utilidad del dia.');
             return;
@@ -385,13 +392,13 @@ class CoverReports extends Component
 
             $last = Carbon::parse($this->all_cover_details->last()->created_at)->format('Y-m-d');
         
-            if ($last == $this->date) {
+            if ($last == $this->date_field_1) {
 
                 $time = Carbon::now();
-                $fecha1 = Carbon::parse($this->date)->format('Y-m-d'). ' 00:00:00';
-                $fecha2 = Carbon::parse($this->date)->format('Y-m-d'). ' 23:59:59';
-                $fecha3 = Carbon::parse($this->date3)->format('Y-m-d'). ' 00:00:00';
-                $fecha4 = Carbon::parse($this->date3)->format('Y-m-d'). ' 23:59:59';
+                $fecha1 = Carbon::parse($this->date_field_1)->format('Y-m-d'). ' 00:00:00';
+                $fecha2 = Carbon::parse($this->date_field_1)->format('Y-m-d'). ' 23:59:59';
+                $fecha3 = Carbon::parse($this->date_field_2)->format('Y-m-d'). ' 00:00:00';
+                $fecha4 = Carbon::parse($this->date_field_2)->format('Y-m-d'). ' 23:59:59';
 
                 $target_detail = $this->all_cover_details->whereBetween('created_at', [$fecha3, $fecha4]);
 
@@ -413,8 +420,8 @@ class CoverReports extends Component
 
                                 $dt->update([
                                 
-                                    'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                    'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'created_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'updated_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
                         
                                 ]);
                             }
@@ -426,8 +433,8 @@ class CoverReports extends Component
 
                                 $it->update([
                                 
-                                    'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                    'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'created_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'updated_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
                         
                                 ]);
                             }
@@ -439,8 +446,8 @@ class CoverReports extends Component
 
                                 $st->update([
                                 
-                                    'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                    'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'created_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'updated_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
                         
                                 ]);
                             }
@@ -452,8 +459,8 @@ class CoverReports extends Component
 
                                 $tt->update([
                                 
-                                    'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                    'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'created_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'updated_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
                         
                                 ]);
                             }
@@ -465,8 +472,8 @@ class CoverReports extends Component
 
                                 $pt->update([
                                 
-                                    'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                    'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'created_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'updated_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
                         
                                 ]);
                             }
@@ -478,8 +485,8 @@ class CoverReports extends Component
 
                                 $cdt->update([
                                 
-                                    'created_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                    'updated_at' => $this->date3 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'created_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                    'updated_at' => $this->date_field_2 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
                         
                                 ]);
                             }
@@ -531,23 +538,26 @@ class CoverReports extends Component
             $this->addError('end_month_option', 'Seleccione una opcion');
             return;
 
-        } elseif ($this->end_month_option == 1 && $this->date == '') {
+        } elseif ($this->end_month_option == 1 && $this->date_field_1 == '') {
 
             $this->resetValidation();
             $this->emit('cover-error', 'Seleccione la nueva fecha a asignar.');
             return;
         
-        }/* elseif ($this->uti_det->actual_balance != $this->sum10) {
+        } /*elseif ($this->uti_det->actual_balance != $this->sum10) {
 
             $this->emit('cover-error', 'El balance diario y la utilidad acumulada no concuerdan.');
             return;
         
         }*/ elseif ($this->uti_det->actual_balance == $this->uti_det->previus_day_balance) {
             
+            $this->resetValidation();
             $this->emit('cover-error', 'No se ha ingresado la utilidad del dia.');
             return;
         
         } else {
+
+            $this->resetValidation();
 
             DB::beginTransaction();
                     
@@ -556,8 +566,8 @@ class CoverReports extends Component
                 if ($this->end_month_option == 1) {
 
                     $today = Carbon::today()->format('Y-m-d');
-                    $from = Carbon::parse($this->date)->format('Y-m-d'). ' 00:00:00';
-                    $to = Carbon::parse($this->date)->format('Y-m-d'). ' 23:59:59';
+                    $from = Carbon::parse($this->date_field_1)->format('Y-m-d'). ' 00:00:00';
+                    $to = Carbon::parse($this->date_field_1)->format('Y-m-d'). ' 23:59:59';
                     $time = Carbon::now();
 
                     $target_detail = $this->all_cover_details->whereBetween('created_at', [$from, $to]);
@@ -569,7 +579,7 @@ class CoverReports extends Component
 
                     }
 
-                    if ($this->date >= $today) {
+                    if ($this->date_field_1 >= $today) {
 
                         $this->emit('cover-error', 'No se permite asignar una fecha igual o superior a la de hoy.');
                         return;
@@ -588,8 +598,8 @@ class CoverReports extends Component
 
                             $dt->update([
                             
-                                'created_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'created_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'updated_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
                     
                             ]);
                         }
@@ -601,8 +611,8 @@ class CoverReports extends Component
 
                             $it->update([
                             
-                                'created_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'created_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'updated_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
                     
                             ]);
                         }
@@ -614,8 +624,8 @@ class CoverReports extends Component
 
                             $st->update([
                             
-                                'created_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'created_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'updated_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
                     
                             ]);
                         }
@@ -627,8 +637,8 @@ class CoverReports extends Component
 
                             $tt->update([
                             
-                                'created_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'created_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'updated_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
                     
                             ]);
                         }
@@ -640,8 +650,8 @@ class CoverReports extends Component
 
                             $pt->update([
                             
-                                'created_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'created_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'updated_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
                     
                             ]);
                         }
@@ -653,8 +663,8 @@ class CoverReports extends Component
 
                             $cdt->update([
                             
-                                'created_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
-                                'updated_at' => $this->date . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'created_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
+                                'updated_at' => $this->date_field_1 . ' ' . $time->hour . ':' . $time->minute . ':' . $time->second,
                     
                             ]);
                         }
@@ -662,7 +672,6 @@ class CoverReports extends Component
 
                 }
 
-                $bill = Bill::firstWhere('type','acumulativa');
                 $cap = Cover::firstWhere('description','capital de trabajo inicial');
                 $uti = Cover::firstWhere('description','utilidad acumulada');
                 $fact = Cover::firstWhere('description','facturas 6% acumulado');

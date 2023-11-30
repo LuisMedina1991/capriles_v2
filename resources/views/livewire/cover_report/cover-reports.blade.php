@@ -31,22 +31,40 @@
                                     </select>
                                 </div>
                             </div>
+                            @if($reportRange == 3)
+                            <div class="col-sm-12">
+                                <h6>Asignar Nueva Fecha?</h6>
+                                <div class="form-group">
+                                    <select wire:model="end_month_option" class="form-control">
+                                        <option value="Elegir">Elegir</option>
+                                        <option value="0">No</option>
+                                        <option value="1">Si</option>
+                                    </select>
+                                    @error('end_month_option')
+                                        <span class="text-danger er">{{ $message }}</span>
+                                    @enderror
+                                </div>
+                            </div>
+                            @endif
                             <div class="col-sm-12 mt-2">
                                 @switch($reportRange)
                                     @case(2)
                                         <h6>Fecha a Modificar</h6>
                                     @break
+                                    @case(3)
+                                        <h6>Nueva Fecha a Asignar</h6>
+                                    @break
                                     @default
                                         <h6>Fecha de Caratula</h6>
                                 @endswitch
                                 <div class="form-group">
-                                    <input type="text" wire:model="date" class="form-control flatpickr" placeholder="Click para elegir">
+                                    <input type="text" wire:model="date_field_1" class="form-control flatpickr" placeholder="Click para elegir">
                                 </div>
                             </div>
                             <div class="col-sm-12 mt-2 {{$reportRange != 2 ? 'invisible' : ''}}">
                                 <h6>Nueva Fecha a Asignar</h6>
                                 <div class="form-group">
-                                    <input type="text" wire:model="date3" class="form-control flatpickr" placeholder="Click para elegir">
+                                    <input type="text" wire:model="date_field_2" class="form-control flatpickr" placeholder="Click para elegir">
                                 </div>
                             </div>
                             @if($uti_det)
@@ -73,9 +91,9 @@
                             <br>
                             @can('cambiar_fecha_caratula')
                             <div class="col-sm-12">
-                                {{--<a href="javascript:void(0)" wire:click.prevent="ChangeCoverDate()" class="btn btn-dark btn-block {{$reportRange != 2 || count($details) < 1 || $date == '' || $date3 == '' || $date == $date3 ? 'disabled' : ''}}">Cambiar Fecha</a>--}}
+                                {{--<a href="javascript:void(0)" wire:click.prevent="ChangeCoverDate()" class="btn btn-dark btn-block {{$reportRange != 2 || count($details) < 1 || $date_field_1 == '' || $date_field_2 == '' || $date_field_1 == $date_field_2 ? 'disabled' : ''}}">Cambiar Fecha</a>--}}
                                 <a href="javascript:void(0)" onclick="Message(4)" 
-                                class="btn btn-dark btn-block {{$reportRange != 2 || count($details) < 1 || $date == '' || $date3 == '' || $date == $date3 ? 'disabled' : ''}}" 
+                                class="btn btn-dark btn-block {{$reportRange != 2 || count($details) < 1 || $date_field_1 == '' || $date_field_2 == '' || $date_field_1 == $date_field_2 ? 'disabled' : ''}}" 
                                 title="Asignar nueva fecha a la caratula">Cambiar Fecha</a>
                             </div>
                             <br>
@@ -92,7 +110,7 @@
                             @endcan
                             @endif
                             <div class="col-sm-12">
-                                <a href="{{ url('cover_report/pdf' . '/' . $reportRange . '/' . $date) }}" 
+                                <a href="{{ url('cover_report/pdf' . '/' . $reportRange . '/' . $date_field_1) }}" 
                                 class="btn btn-dark btn-block {{count($details) < 1 || $reportRange == 2 ? 'disabled' : ''}}" target="_blank">
                                     Generar PDF
                                 </a>
