@@ -98,7 +98,7 @@
                                 <td><h6 class="text-center">${{number_format($d->amount,2)}}</h6></td>
                                 <td class="text-center">
                                     @if($reportRange == 0)
-                                    @can('cancel_movement')
+                                    @can('eliminar_registro')
                                     <a href="javascript:void(0)" onclick="Confirm('{{$d->id}}')" class="btn btn-dark" title="Eliminar">
                                         <i class="fas fa-trash"></i>
                                     </a>
