@@ -34,14 +34,12 @@
         <table cellpadding="0" cellspacing="0" class="table-items" width="100%">
             <thead>
                 <tr>
-                    <th width="10%">Medida</th>
-                    <th width="10%">Marca</th>
-                    <th width="10%">Trilla</th>
-                    <th width="10%">Lona</th>
+                    <th width="10%">Codigo</th>
+                    <th width="30%">Descripcion</th>
                     <th width="10%">Costo</th>
                     <th width="10%">Precio</th>
                     @foreach($offices as $office)
-                    <th width="10%">{{$office->name}}</th>
+                    <th>{{$office->name}}</th>
                     @endforeach
                     <th width="10%">Totales</th>
                 </tr>
@@ -50,16 +48,14 @@
                 @foreach ($stocks as $stock)
                     <tr>
                         @if($stock->offices->sum('pivot.stock') > 0)
-                            <td align="center">{{ $stock->description }}</td>
-                            <td align="center">{{ $stock->brand }}</td>
-                            <td align="center">{{ $stock->threshing }}</td>
-                            <td align="center">{{ $stock->tarp }}</td>
-                            <td align="center">${{ $stock->cost }}</td>
-                            <td align="center">${{ $stock->price }}</td>
+                            <td align="center">{{$stock->code}}</td>
+                            <td align="center">{{$stock->brand}} | {{$stock->threshing}} | {{$stock->tarp}}</td>
+                            <td align="center">${{number_format($stock->cost,2)}}</td>
+                            <td align="center">${{number_format($stock->price,2)}}</td>
                             @foreach($stock->offices as $var)
-                            <td align="center">{{ $var->pivot->stock }}</td>
+                            <td align="center">{{$var->pivot->stock}}</td>
                             @endforeach
-                            <td align="center">{{ $stock->offices->sum('pivot.stock') }}</td>
+                            <td align="center">{{$stock->offices->sum('pivot.stock')}}</td>
                         @endif
                     </tr>
                 @endforeach
