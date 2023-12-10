@@ -22,9 +22,7 @@
                         <thead class="text-white" style="background: #3B3F5C">
                             <tr>
                                 <th class="table-th text-white text-center">CODIGO DE PRODUCTO</th>
-                                <th class="table-th text-white text-center">MARCA</th>
-                                <th class="table-th text-white text-center">TRILLA</th>
-                                <th class="table-th text-white text-center">LONA</th>
+                                <th class="table-th text-white text-center">DESCRIPCION</th>
                                 <th class="table-th text-white text-center">COSTO</th>
                                 <th class="table-th text-white text-center">PRECIO</th>
                                 <th class="table-th text-white text-center">ESTADO</th>
@@ -39,9 +37,7 @@
                             @foreach ($stocks as $stock)
                             <tr>
                                 <td><h6 class="text-center">{{$stock->code}}</h6></td>
-                                <td><h6 class="text-center">{{$stock->brand}}</h6></td>
-                                <td><h6 class="text-center">{{$stock->threshing}}</h6></td>
-                                <td><h6 class="text-center">{{$stock->tarp}}</h6></td>
+                                <td><h6 class="text-center">{{$stock->brand}} | {{$stock->threshing}} | {{$stock->tarp}}</h6></td>
                                 <td><h6 class="text-center">{{number_format($stock->cost,2)}}</h6></td>
                                 <td><h6 class="text-center">{{number_format($stock->price,2)}}</h6></td>
                                 <td class="text-center">
