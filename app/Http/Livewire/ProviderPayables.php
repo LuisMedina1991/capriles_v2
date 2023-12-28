@@ -158,123 +158,127 @@ class ProviderPayables extends Component
 
     }
 
-    public function Edit(ProviderPayable $payable){
-        
+    public function Edit(ProviderPayable $payable)
+    {
         $this->selected_id = $payable->id;
         $this->description = $payable->description;
         $this->provider_id = $payable->provider_id;
-        $this->amount = number_format($payable->amount,2);
+        $this->amount = floatval($payable->amount);
         $this->amount_2 = 0;
         $this->description_2 = '';
-        
         $this->emit('show-modal2', 'Abrir Modal');
-
     }
 
-    public function Update(){
+    public function Update()
+    {
+        if (!$this->cov_det) {
 
-        if($this->cov_det != null){
-        
-            $payable = ProviderPayable::find($this->selected_id);
+            $this->emit('cover-error','Se debe crear caratula del dia.');
+            return;
+
+        } else {
 
             $rules = [
 
                 'provider_id' => 'not_in:Elegir',
                 'description' => 'required|min:10|max:255',
                 'amount' => 'required|numeric',
-                'amount_2' => 'lte:amount|numeric',
+                'amount_2' => 'required|numeric|gte:0|lte:amount',
                 'description_2' => 'exclude_if:amount_2,0|required|min:10|max:255'
+
             ];
 
             $messages = [
 
                 'provider_id.not_in' => 'Seleccione una opcion',
-                'description.required' => 'La descripcion es requerida',
-                'description.min' => 'La descripcion debe contener al menos 10 caracteres',
-                'description.max' => 'La descripcion debe contener 255 caracteres como maximo',
-                'amount.required' => 'El monto es requerido',
+                'description.required' => 'Campo requerido',
+                'description.min' => 'Minimo 10 caracteres',
+                'description.max' => 'Maximo 255 caracteres',
+                'amount.required' => 'Campo requerido',
                 'amount.numeric' => 'Este campo solo admite numeros',
-                'amount_2.lte' => 'El monto es mayor a la deuda',
+                'amount_2.required' => 'Campo requerido',
                 'amount_2.numeric' => 'Este campo solo admite numeros',
-                'description_2.required' => 'Los detalles son requeridos',
-                'description_2.min' => 'Los detalles deben contener al menos 10 caracteres',
-                'description_2.max' => 'Los detalles deben contener 255 caracteres como maximo',
+                'amount_2.gte' => 'El monto a pagar debe ser mayor o igual a 0',
+                'amount_2.lte' => 'El monto a pagar debe ser menor o igual al saldo actual',
+                'description_2.required' => 'Campo requerido',
+                'description_2.min' => 'Minimo 10 caracteres',
+                'description_2.max' => 'Maximo 255 caracteres',
+
             ];
 
             $this->validate($rules, $messages);
 
             DB::beginTransaction();
             
-                try {
-            
-                    if($this->amount_2 <= 0){
+            try {
+
+                $payable = ProviderPayable::find($this->selected_id);
+        
+                if ($this->amount_2 <= 0) {
+                    
+                    $payable->Update([
+
+                        'provider_id' => $this->provider_id,
+                        'description' => $this->description
+
+                    ]);
+
+                } else {
+
+                    $detail = $payable->details()->create([
+
+                        'description' => $this->description_2,
+                        'amount' => $this->amount_2,
+                        'previus_balance' => $payable->amount,
+                        'actual_balance' => $payable->amount - $this->amount_2
                         
+                    ]);
+
+                    if (!$detail) {
+
+                        $this->emit('movement-error', 'Error al registrar el detalle del movimiento.');
+                        return;
+
+                    } else {
+
                         $payable->Update([
 
                             'provider_id' => $this->provider_id,
                             'description' => $this->description,
-                            'amount' => $this->amount
+                            'amount' => $payable->amount - $detail->amount
+
                         ]);
 
-                    }else{
-
-                        $detail = $payable->details()->create([
-
-                            'description' => $this->description_2,
-                            'amount' => $this->amount_2,
-                            'previus_balance' => $payable->amount,
-                            'actual_balance' => $payable->amount - $this->amount_2
-                            
+                        $this->cov->update([
+                        
+                            'balance' => $this->cov->balance - $detail->amount
+                
                         ]);
-
-                        if($detail){
-
-                            //if($payable->amount > $this->amount_2){
-
-                                $payable->Update([
-
-                                    'amount' => $payable->amount - $this->amount_2
-                                ]);
-
-                            /*}else{
-
-                                $payable->delete();
-                            }*/
-
-                            $this->cov->update([
-                            
-                                'balance' => $this->cov->balance - $this->amount_2
-                    
-                            ]);
-                    
-                            $this->cov_det->update([
                 
-                                'egress' => $this->cov_det->egress + $this->amount_2,
-                                'actual_balance' => $this->cov_det->actual_balance - $this->amount_2
-                
-                            ]);
-                        }
+                        $this->cov_det->update([
+            
+                            'egress' => $this->cov_det->egress + $detail->amount,
+                            'actual_balance' => $this->cov_det->actual_balance - $detail->amount
+            
+                        ]);
 
                     }
-
-                    DB::commit();
-                    $this->emit('item-updated', 'Registro Actualizado');
-                    $this->resetUI();
-                    $this->mount();
-                    $this->render();
-
-                } catch (Exception) {
-                    
-                    DB::rollback();
-                    $this->emit('movement-error', 'Algo salio mal');
                 }
 
-        }else{
+                DB::commit();
+                $this->emit('item-updated', 'Registro Actualizado.');
+                $this->resetUI();
+                $this->mount();
+                $this->render();
 
-            $this->emit('cover-error','Se debe crear caratula del dia');
-            return;
+            } catch (Exception $e) {
+                
+                DB::rollback();
+                //$this->emit('error-message', $e->getMessage());
+                $this->emit('movement-error', 'Algo salio mal.');
+
+            }
         }
-
     }
 
     protected $listeners = [
@@ -421,8 +425,8 @@ class ProviderPayables extends Component
 
     }
 
-    public function resetUI(){
-
+    public function resetUI()
+    {
         $this->description = '';
         $this->description_2 = '';
         $this->reference = '';
