@@ -409,7 +409,7 @@ class Imports extends Component
         $this->description = '';
         $this->description_2 = '';
         $this->amount = '';
-        $this->amount_2 = '';
+        $this->amount_2 = 0;
         $this->search = '';
         $this->selected_id = 0;
         $this->data_to_import = null;
