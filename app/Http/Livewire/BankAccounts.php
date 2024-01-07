@@ -2,27 +2,28 @@
 
 namespace App\Http\Livewire;
 
-use Livewire\Component;
-use App\Models\Company;
 use App\Models\Bank;
 use App\Models\BankAccount;
-use Livewire\WithPagination;
-use Carbon\Carbon;
+use App\Models\Company;
 use App\Models\Cover;
 use App\Models\CoverDetail;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Livewire\Component;
+use Livewire\WithPagination;
 
 class BankAccounts extends Component
 {
     use WithPagination;
 
-    public $bank_id,$company_id,$amount,$amount_2,$action,$type,$currency,$description,$search,$pageTitle,$componentName,$selected_id;
+    public $pageTitle,$componentName,$selected_id,$search;
+    public $company_id,$bank_id,$type,$currency,$amount,$action,$income_description,$discharge_description,$income_amount,$discharge_amount;
     public $from,$to,$ref,$ref_det,$cov,$cov_det;
     private $pagination = 30;
 
-    public function mount(){
-
+    public function mount()
+    {
         $this->pageTitle = 'Listado';
         $this->componentName = 'Cuentas de Banco';
         $this->bank_id = 'Elegir';
@@ -37,14 +38,13 @@ class BankAccounts extends Component
         $this->cov_det = [];
     }
 
-    public function paginationView(){
-
+    public function paginationView()
+    {
         return 'vendor.livewire.bootstrap';
     }
 
     public function render()
     {   
-
         if(strlen($this->search) > 0)
 
             $data = Company::join('bank_accounts as b_a','b_a.company_id','companies.id')
@@ -76,8 +76,8 @@ class BankAccounts extends Component
         ->section('content');
     }
 
-    public function Store(){
-
+    public function Store()
+    {
         if($this->ref_det != null){
 
             $rules = [
@@ -161,25 +161,38 @@ class BankAccounts extends Component
 
     }
 
-    public function Edit(BankAccount $account){
-        
+    public function Edit(BankAccount $account)
+    {
         $this->selected_id = $account->id;
         $this->company_id = $account->company_id;
         $this->bank_id = $account->bank_id;
         $this->type = $account->type;
         $this->currency = $account->currency;
-        $this->amount = $account->amount;
+        $this->amount = floatval($account->amount);
         $this->action = 'Elegir';
-
+        $this->income_description = '';
+        $this->income_amount = '';
+        $this->discharge_description = '';
+        $this->discharge_amount = '';
         $this->emit('show-modal2', 'Abrir Modal');
-
     }
 
-    public function Update(){
+    public function updatedaction()
+    {
+        $this->income_description = '';
+        $this->income_amount = '';
+        $this->discharge_description = '';
+        $this->discharge_amount = '';
+    }
 
-        if($this->ref_det != null){
-        
-            $account = BankAccount::find($this->selected_id);
+    public function Update()
+    {
+        if (!$this->ref_det) {
+
+            $this->emit('cover-error','Se debe crear caratula del dia.');
+            return;
+
+        } else {
 
             $rules = [
                 
@@ -188,142 +201,163 @@ class BankAccounts extends Component
                 'type' => 'not_in:Elegir',
                 'currency' => 'not_in:Elegir',
                 'amount' => 'required|numeric',
-                'description' => 'exclude_if:action,Elegir|required|min:10|max:255',
-                'amount_2' => 'exclude_if:action,Elegir|required|numeric',
                 'action' => 'not_in:Elegir',
+                'income_description' => 'exclude_unless:action,ingreso|required|min:10|max:255',
+                'income_amount' => 'exclude_unless:action,ingreso|required|numeric|gt:0',
+                'discharge_description' => 'exclude_unless:action,egreso|required|min:10|max:255',
+                'discharge_amount' => 'exclude_unless:action,egreso|required|numeric|gt:0|lte:amount',
+
             ];
 
             $messages = [
 
-                'company_id.not_in' => 'Elija un propietario para la cuenta',
-                'bank_id.not_in' => 'Elija un banco para la cuenta',
-                'type.not_in' => 'Elija un tipo de cuenta',
-                'currency.not_in' => 'Elija una moneda para la cuenta',
-                'amount.required' => 'El saldo de la cuenta es requerido',
+                'company_id.not_in' => 'Seleccione una opcion',
+                'bank_id.not_in' => 'Seleccione una opcion',
+                'type.not_in' => 'Seleccione una opcion',
+                'currency.not_in' => 'Seleccione una opcion',
+                'amount.required' => 'Campo requerido',
                 'amount.numeric' => 'Este campo solo admite numeros',
-                'description.required' => 'Los detalles son requeridos',
-                'description.min' => 'Los detalles deben contener al menos 10 caracteres',
-                'description.max' => 'La descripcion debe contener 255 caracteres como maximo',
-                'amount_2.required' => 'El monto es requerido',
-                'amount_2.numeric' => 'Este campo solo admite numeros',
-                'action.not_in' => 'Elija una opcion',
+                'action.not_in' => 'Seleccione una opcion',
+                'income_description.required' => 'Campo requerido',
+                'income_description.min' => 'Minimo 10 caracteres',
+                'income_description.max' => 'Maximo 255 caracteres',
+                'income_amount.required' => 'Campo requerido',
+                'income_amount.numeric' => 'Este campo solo admite numeros',
+                'income_amount.gt' => 'El monto debe ser mayor a 0',
+                'discharge_description.required' => 'Campo requerido',
+                'discharge_description.min' => 'Minimo 10 caracteres',
+                'discharge_description.max' => 'Maximo 255 caracteres',
+                'discharge_amount.required' => 'Campo requerido',
+                'discharge_amount.numeric' => 'Este campo solo admite numeros',
+                'discharge_amount.gt' => 'El monto debe ser mayor a 0',
+                'discharge_amount.lte' => 'El monto debe ser menor o igual al saldo actual',
+
             ];
             
             $this->validate($rules, $messages);
 
             DB::beginTransaction();
             
-                try {
+            try {
 
-                    switch($this->action){
+                $account = BankAccount::find($this->selected_id);
+                $bank_name = Bank::firstWhere('id',$account->bank_id)->description;
+                $company_name = Company::firstWhere('id',$account->company_id)->description;
+                $this->cov = Cover::firstWhere('description',$bank_name . ' ' . $account->type . ' ' . $account->currency . ' ' . $company_name);
+                $this->cov_det = $this->cov->details->whereBetween('created_at',[$this->from, $this->to])->first();
 
-                        case 'Elegir': $account->update([
+                switch ($this->action) {
 
-                            'type' => $this->type,
-                            'currency' => $this->currency,
-                            'amount' => $this->amount,
-                            'company_id' => $this->company_id,
-                            'bank_id' => $this->bank_id
+                    /*case 'Elegir': $account->update([
 
-                        ]);
+                        'type' => $this->type,
+                        'currency' => $this->currency,
+                        'amount' => $this->amount,
+                        'company_id' => $this->company_id,
+                        'bank_id' => $this->bank_id
+
+                    ]);
+                    
+                    break;*/
+
+                    case 'ingreso': 
                         
-                        break;
+                        $detail = $account->details()->create([
 
-                        case 'Ingreso': $detail = $account->details()->create([
-
-                            'description' => $this->description,
-                            'amount' => $this->amount_2,
+                            'description' => $this->income_description,
+                            'amount' => $this->income_amount,
                             'previus_balance' => $account->amount,
-                            'actual_balance' => $account->amount + $this->amount_2
+                            'actual_balance' => $account->amount + $this->income_amount
+
                         ]);
-                        
-                        if($detail){
+                    
+                        if (!$detail) {
+
+                            $this->emit('movement-error', 'Error al registrar el detalle del movimiento.');
+                            return;
+
+                        } else {
 
                             $account->update([
 
-                                'amount' => $account->amount + $this->amount_2
+                                'amount' => $account->amount + $detail->amount
                 
                             ]);
                 
-                            $bank = Bank::firstWhere('id',$account->bank_id)->description;
-                            $company = Company::firstWhere('id',$account->company_id)->description;
-                
-                            $this->cov = Cover::firstWhere('description',$bank . ' ' . $account->type . ' ' . $account->currency . ' ' . $company);
-                            $this->cov_det = $this->cov->details->where('cover_id',$this->cov->id)->whereBetween('created_at',[$this->from, $this->to])->first();
-                
                             $this->cov->update([
                                 
-                                'balance' => $this->cov->balance + $this->amount_2
+                                'balance' => $this->cov->balance + $detail->amount
                     
                             ]);
                     
                             $this->cov_det->update([
                 
-                                'ingress' => $this->cov_det->ingress + $this->amount_2,
-                                'actual_balance' => $this->cov_det->actual_balance + $this->amount_2
+                                'ingress' => $this->cov_det->ingress + $detail->amount,
+                                'actual_balance' => $this->cov_det->actual_balance + $detail->amount
                 
                             ]);
+
                         }
 
-                        break;
+                    break;
 
-                        case 'Egreso': $detail = $account->details()->create([
-
-                            'description' => $this->description,
-                            'amount' => $this->amount_2,
-                            'previus_balance' => $account->amount,
-                            'actual_balance' => $account->amount - $this->amount_2
-                        ]);
+                    case 'egreso': 
                         
-                        if($detail){
+                        $detail = $account->details()->create([
+
+                            'description' => $this->discharge_description,
+                            'amount' => $this->discharge_amount,
+                            'previus_balance' => $account->amount,
+                            'actual_balance' => $account->amount - $this->discharge_amount
+
+                        ]);
+                    
+                        if (!$detail) {
+
+                            $this->emit('movement-error', 'Error al registrar el detalle del movimiento.');
+                            return;
+
+                        } else {
 
                             $account->update([
 
-                                'amount' => $account->amount - $this->amount_2
+                                'amount' => $account->amount - $detail->amount
                 
                             ]);
                 
-                            $bank = Bank::firstWhere('id',$account->bank_id)->description;
-                            $company = Company::firstWhere('id',$account->company_id)->description;
-                
-                            $this->cov = Cover::firstWhere('description',$bank . ' ' . $account->type . ' ' . $account->currency . ' ' . $company);
-                            $this->cov_det = $this->cov->details->where('cover_id',$this->cov->id)->whereBetween('created_at',[$this->from, $this->to])->first();
-                
                             $this->cov->update([
                                 
-                                'balance' => $this->cov->balance - $this->amount_2
+                                'balance' => $this->cov->balance - $detail->amount
                     
                             ]);
                     
                             $this->cov_det->update([
                 
-                                'egress' => $this->cov_det->egress + $this->amount_2,
-                                'actual_balance' => $this->cov_det->actual_balance - $this->amount_2
+                                'egress' => $this->cov_det->egress + $detail->amount,
+                                'actual_balance' => $this->cov_det->actual_balance - $detail->amount
                 
                             ]);
+
                         }
 
-                        break;
-                    }
-
-                    DB::commit();
-                    $this->emit('item-updated', 'Registro actualizado');
-                    $this->resetUI();
-                    $this->mount();
-                    $this->render();
-
-                } catch (Exception) {
+                    break;
                     
-                    DB::rollback();
-                    $this->emit('movement-error', 'Algo salio mal');
                 }
 
-        }else{
+                DB::commit();
+                $this->resetUI();
+                $this->mount();
+                $this->render();
+                $this->emit('item-updated', 'Registro actualizado.');
 
-            $this->emit('cover-error','Se debe crear caratula del dia');
-            return;
+            } catch (Exception $e) {
+                
+                DB::rollback();
+                //$this->emit('movement-error', $e->getMessage());
+                $this->emit('movement-error', 'Algo salio mal.');
+
+            }
         }
-
     }
 
     protected $listeners = [
@@ -331,8 +365,8 @@ class BankAccounts extends Component
         'destroy' => 'Destroy'
     ];
 
-    public function Destroy(BankAccount $account){
-
+    public function Destroy(BankAccount $account)
+    {
         if($this->ref_det != null){
 
             DB::beginTransaction();
@@ -371,15 +405,17 @@ class BankAccounts extends Component
 
     }
 
-    public function resetUI(){
-
+    public function resetUI()
+    {
         $this->company_id = 'Elegir';
         $this->bank_id = 'Elegir';
         $this->type = 'Elegir';
         $this->currency = 'Elegir';
         $this->amount = '';
-        $this->amount_2 = '';
-        $this->description = '';
+        $this->income_description = '';
+        $this->income_amount = '';
+        $this->discharge_description = '';
+        $this->discharge_amount = '';
         $this->action = 'Elegir';
         $this->search = '';
         $this->selected_id = 0;
