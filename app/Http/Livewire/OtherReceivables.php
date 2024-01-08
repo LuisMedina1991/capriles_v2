@@ -2,37 +2,43 @@
 
 namespace App\Http\Livewire;
 
-use Livewire\Component;
-use App\Models\OtherReceivable;
-use Livewire\WithPagination;
-use Carbon\Carbon;
+use App\Imports\OtherReceivablesImport;
 use App\Models\Cover;
 use App\Models\Detail;
+use App\Models\OtherReceivable;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Imports\OtherReceivablesImport;
 
 class OtherReceivables extends Component
 {
     use WithPagination;
     use WithFileUploads;
 
-    public $description,$description_2,$reference,$amount,$amount_2,$search,$selected_id,$pageTitle,$componentName,$my_total,$details;
+    public $search,$selected_id,$pageTitle,$componentName,$my_total,$details;
+    public $reference,$amount,$description,$action,$discharge_description,$discharge_amount;
     public $from,$to,$cov,$cov_det;
     private $pagination = 20;
     public $data_to_import;
 
-    public function paginationView(){
-
+    public function paginationView()
+    {
         return 'vendor.livewire.bootstrap';
     }
 
-    public function mount(){
-
+    public function mount()
+    {
         $this->pageTitle = 'listado';
         $this->componentName = 'otros por cobrar';
+        $this->search = '';
+        $this->selected_id = 0;
+        $this->reference = '';
+        $this->amount = '';
+        $this->description = '';
         //$this->my_total = 0;
         $this->details = [];
         $this->from = Carbon::parse(Carbon::now())->format('Y-m-d') . ' 00:00:00';
@@ -78,8 +84,8 @@ class OtherReceivables extends Component
 
     }
 
-    public function Store(){
-
+    public function Store()
+    {
         if($this->cov_det != null){
 
             $rules = [
@@ -150,124 +156,143 @@ class OtherReceivables extends Component
 
     }
 
-    public function Edit(OtherReceivable $other){
-        
+    public function Edit(OtherReceivable $other)
+    {
         $this->selected_id = $other->id;
-        $this->description = $other->description;
         $this->reference = $other->reference;
-        $this->amount = number_format($other->amount,2);
-        $this->amount_2 = 0;
-        
+        $this->description = $other->description;
+        $this->amount = floatval($other->amount);
+        $this->action = 'Elegir';
+        $this->discharge_description = '';
+        $this->discharge_amount = '';
         $this->emit('show-modal2', 'Abrir Modal');
-
     }
 
-    public function Update(){
+    public function updatedaction()
+    {
+        $this->discharge_description = '';
+        $this->discharge_amount = '';
+    }
 
-        if($this->cov_det != null){
-        
-            $other = OtherReceivable::find($this->selected_id);
+    public function Update()
+    {
+        if (!$this->cov_det) {
+
+            $this->emit('cover-error','Se debe crear caratula del dia.');
+            return;
+
+        } else {
 
             $rules = [
 
                 'reference' => 'required|min:5|max:45',
                 'description' => 'required|min:10|max:255',
                 'amount' => 'required|numeric',
-                'amount_2' => 'lte:amount|numeric',
-                'description_2' => "exclude_if:amount_2,0|required|min:10|max:255"
+                'action' => 'not_in:Elegir',
+                'discharge_description' => 'exclude_unless:action,egreso|required|min:10|max:255',
+                'discharge_amount' => 'exclude_unless:action,egreso|required|numeric|gt:0|lte:amount',
+
             ];
 
             $messages = [
 
-                'reference.required' => 'La referencia es requerida',
-                'reference.min' => 'La referencia debe contener al menos 5 caracteres',
-                'reference.max' => 'La referencia debe contener 45 caracteres como maximo',
-                'description.required' => 'La descripcion es requerida',
-                'description.min' => 'La descripcion debe contener al menos 10 caracteres',
-                'description.max' => 'La descripcion debe contener 255 caracteres como maximo',
-                'amount.required' => 'El monto es requerido',
+                'reference.required' => 'Campo requerido',
+                'reference.min' => 'Minimo 5 caracteres',
+                'reference.max' => 'Maximo 45 caracteres',
+                'description.required' => 'Campo requerido',
+                'description.min' => 'Minimo 10 caracteres',
+                'description.max' => 'Maximo 255 caracteres',
+                'amount.required' => 'Campo requerido',
                 'amount.numeric' => 'Este campo solo admite numeros',
-                'amount_2.lte' => 'El monto a pagar es mayor a la deuda',
-                'amount_2.numeric' => 'Este campo solo admite numeros',
-                'description_2.required' => 'Los detalles son requeridos',
-                'description_2.min' => 'Los detalles deben contener al menos 10 caracteres',
-                'description_2.max' => 'Los detalles deben contener 255 caracteres como maximo',
+                'action.not_in' => 'Seleccione una opcion',
+                'discharge_description.required' => 'Campo requerido',
+                'discharge_description.min' => 'Minimo 10 caracteres',
+                'discharge_description.max' => 'Maximo 255 caracteres',
+                'discharge_amount.required' => 'Campo requerido',
+                'discharge_amount.numeric' => 'Este campo solo admite numeros',
+                'discharge_amount.gt' => 'El monto debe ser mayor a 0',
+                'discharge_amount.lte' => 'El monto debe ser menor o igual al saldo',
+
             ];
 
             $this->validate($rules, $messages);
 
             DB::beginTransaction();
             
-                try {
-            
-                    if($this->amount_2 <= 0){
-                        
-                        $other->Update([
+            try {
+
+                $debt = OtherReceivable::find($this->selected_id);
+        
+                switch ($this->action) {
+
+                    case 'edicion':
+
+                        $debt->Update([
 
                             'reference' => $this->reference,
-                            'description' => $this->description,
-                            'amount' => $this->amount
+                            'description' => $this->description
+
                         ]);
 
-                    }else{
+                    break;
 
-                        $detail = $other->details()->create([
+                    case 'egreso':
 
-                            'description' => $this->description_2,
-                            'amount' => $this->amount_2,
-                            'previus_balance' => $other->amount,
-                            'actual_balance' => $other->amount - $this->amount_2
+                        $detail = $debt->details()->create([
+
+                            'description' => $this->discharge_description,
+                            'amount' => $this->discharge_amount,
+                            'previus_balance' => $debt->amount,
+                            'actual_balance' => $debt->amount - $this->discharge_amount
                             
                         ]);
+    
+                        if (!$detail) {
 
-                        if($detail){
+                            $this->emit('movement-error', 'Error al registrar el detalle del movimiento.');
+                            return;
+    
+                        } else {
 
-                            //if($other->amount > $this->amount_2){
+                            $debt->Update([
+    
+                                'amount' => $debt->amount - $detail->amount
 
-                                $other->Update([
-
-                                    'amount' => $other->amount - $this->amount_2
-                                ]);
-
-                            /*}else{
-
-                                $other->delete();
-                            }*/
-
+                            ]);
+    
                             $this->cov->update([
                         
-                                'balance' => $this->cov->balance - $this->amount_2
+                                'balance' => $this->cov->balance - $detail->amount
                     
                             ]);
                     
                             $this->cov_det->update([
                 
-                                'egress' => $this->cov_det->egress + $this->amount_2,
-                                'actual_balance' => $this->cov_det->actual_balance - $this->amount_2
+                                'egress' => $this->cov_det->egress + $detail->amount,
+                                'actual_balance' => $this->cov_det->actual_balance - $detail->amount
                 
                             ]);
+
                         }
 
-                    }
+                    break;
 
-                    DB::commit();
-                    $this->emit('item-updated', 'Registro Actualizado');
-                    $this->resetUI();
-                    $this->mount();
-                    $this->render();
-
-                } catch (Exception) {
-                    
-                    DB::rollback();
-                    $this->emit('movement-error', 'Algo salio mal');
                 }
 
-        }else{
+                DB::commit();
+                $this->resetUI();
+                $this->mount();
+                $this->render();
+                $this->emit('item-updated', 'Registro Actualizado.');
 
-            $this->emit('cover-error','Se debe crear caratula del dia');
-            return;
+            } catch (Exception $e) {
+                
+                DB::rollback();
+                //$this->emit('movement-error', $e->getMessage());
+                $this->emit('movement-error', 'Algo salio mal.');
+
+            }
         }
-
     }
 
     protected $listeners = [
@@ -276,8 +301,8 @@ class OtherReceivables extends Component
         'cancel' => 'Cancel',
     ];
 
-    public function Destroy(OtherReceivable $other){
-
+    public function Destroy(OtherReceivable $other)
+    {
         if($this->cov_det != null){
 
             DB::beginTransaction();
@@ -318,14 +343,14 @@ class OtherReceivables extends Component
 
     }
 
-    public function Details(OtherReceivable $other){
-
+    public function Details(OtherReceivable $other)
+    {
         $this->details = $other->details;
         $this->emit('show-detail', 'Mostrando modal');
     }
 
-    public function Cancel(Detail $det){
-
+    public function Cancel(Detail $det)
+    {
         if($this->cov_det != null){
 
             $other = OtherReceivable::firstWhere('id',$det->detailable_id);
@@ -383,8 +408,8 @@ class OtherReceivables extends Component
         
     }
 
-    public function ImportData(){
-
+    public function ImportData()
+    {
         $rules = [
 
             'data_to_import' => 'required|file|max:2048|mimes:csv,xls,xlsx'
@@ -415,13 +440,14 @@ class OtherReceivables extends Component
 
     }
 
-    public function resetUI(){
-
-        $this->description = '';
-        $this->description_2 = '';
+    public function resetUI()
+    {
         $this->reference = '';
         $this->amount = '';
-        $this->amount_2 = 0;
+        $this->description = '';
+        $this->action = 'Elegir';
+        $this->discharge_description = '';
+        $this->discharge_amount = '';
         $this->search = '';
         $this->selected_id = 0;
         $this->data_to_import = null;
