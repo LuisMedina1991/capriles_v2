@@ -2,39 +2,45 @@
 
 namespace App\Http\Livewire;
 
+use App\Imports\CostumerReceivablesImport;
 use App\Models\Costumer;
-use Livewire\Component;
 use App\Models\CostumerReceivable;
-use Livewire\WithPagination;
-use Carbon\Carbon;
 use App\Models\Cover;
 use App\Models\Detail;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Imports\CostumerReceivablesImport;
+
 
 class CostumerReceivables extends Component
 {
     use WithPagination;
     use WithFileUploads;
 
-    public $description,$description_2,$costumer,$amount,$amount_2,$search,$selected_id,$pageTitle,$componentName,$my_total,$details;
+    public $search,$selected_id,$pageTitle,$componentName,$my_total,$details;
+    public $costumer,$amount,$description,$action,$discharge_description,$discharge_amount;
     public $from,$to,$cov,$cov_det;
     private $pagination = 20;
     public $data_to_import;
 
-    public function paginationView(){
-
+    public function paginationView()
+    {
         return 'vendor.livewire.bootstrap';
     }
 
-    public function mount(){
-
+    public function mount()
+    {
         $this->pageTitle = 'listado';
         $this->componentName = 'clientes por cobrar';
+        $this->search = '';
+        $this->selected_id = 0;
         $this->costumer = 'Elegir';
+        $this->amount = '';
+        $this->description = '';
         //$this->my_total = 0;
         $this->details = [];
         $this->from = Carbon::parse(Carbon::now())->format('Y-m-d') . ' 00:00:00';
@@ -86,8 +92,8 @@ class CostumerReceivables extends Component
 
     }
 
-    public function Store(){
-
+    public function Store()
+    {
         if($this->cov_det != null){
 
             $rules = [
@@ -156,123 +162,141 @@ class CostumerReceivables extends Component
 
     }
 
-    public function Edit(CostumerReceivable $client){
-        
+    public function Edit(CostumerReceivable $client)
+    {
         $this->selected_id = $client->id;
-        $this->description = $client->description;
         $this->costumer = $client->costumer_id;
-        $this->amount = number_format($client->amount,2);
-        $this->amount_2 = 0;
-        
+        $this->amount = floatval($client->amount);
+        $this->description = $client->description;
+        $this->action = 'Elegir';
+        $this->discharge_description = '';
+        $this->discharge_amount = '';
         $this->emit('show-modal2', 'Abrir Modal');
-
     }
 
-    public function Update(){
+    public function updatedaction()
+    {
+        $this->discharge_description = '';
+        $this->discharge_amount = '';
+    }
 
-        if($this->cov_det != null){
-        
-            $client = CostumerReceivable::find($this->selected_id);
+    public function Update()
+    {
+        if (!$this->cov_det) {
+
+            $this->emit('cover-error','Se debe crear caratula del dia');
+            return;
+
+        } else {
 
             $rules = [
 
                 'costumer' => 'not_in:Elegir',
-                'description' => 'required|min:10|max:255',
                 'amount' => 'required|numeric',
-                'amount_2' => 'lte:amount|numeric',
-                'description_2' => "exclude_if:amount_2,0|required|min:10|max:255"
+                'description' => 'required|min:10|max:255',
+                'action' => 'not_in:Elegir',
+                'discharge_amount' => 'exclude_unless:action,egreso|required|numeric|gt:0|lte:amount',
+                'discharge_description' => 'exclude_unless:action,egreso|required|min:10|max:255',
+
             ];
 
             $messages = [
 
                 'costumer.not_in' => 'Seleccione una opcion',
-                'description.required' => 'La descripcion es requerida',
-                'description.min' => 'La descripcion debe contener al menos 10 caracteres',
-                'description.max' => 'La descripcion debe contener 255 caracteres como maximo',
-                'amount.required' => 'El monto es requerido',
+                'amount.required' => 'Campo requerido',
                 'amount.numeric' => 'Este campo solo admite numeros',
-                'amount_2.lte' => 'El monto a pagar es mayor a la deuda',
-                'amount_2.numeric' => 'Este campo solo admite numeros',
-                'description_2.required' => 'Los detalles son requeridos',
-                'description_2.min' => 'Los detalles deben contener al menos 10 caracteres',
-                'description_2.max' => 'Los detalles deben contener 255 caracteres como maximo',
+                'description.required' => 'Campo requerido',
+                'description.min' => 'Minimo 10 caracteres',
+                'description.max' => 'Maximo 255 caracteres',
+                'action.not_in' => 'Seleccione una opcion',
+                'discharge_amount.required' => 'Campo requerido',
+                'discharge_amount.numeric' => 'Este campo solo admite numeros',
+                'discharge_amount.gt' => 'El monto debe ser mayor a 0',
+                'discharge_amount.lte' => 'El monto debe ser menor o igual al saldo',
+                'discharge_description.required' => 'Campo requerido',
+                'discharge_description.min' => 'Minimo 10 caracteres',
+                'discharge_description.max' => 'Maximo 255 caracteres',
+
             ];
 
             $this->validate($rules, $messages);
 
             DB::beginTransaction();
             
-                try {
-            
-                    if($this->amount_2 <= 0){
-                        
-                        $client->Update([
+            try {
+
+                $debt = CostumerReceivable::find($this->selected_id);
+
+                switch ($this->action) {
+
+                    case 'edicion':
+
+                        $debt->Update([
 
                             'costumer_id' => $this->costumer,
-                            'description' => $this->description,
-                            'amount' => $this->amount
+                            'description' => $this->description
+
                         ]);
 
-                    }else{
+                    break;
 
-                        $detail = $client->details()->create([
+                    case 'egreso':
 
-                            'description' => $this->description_2,
-                            'amount' => $this->amount_2,
-                            'previus_balance' => $client->amount,
-                            'actual_balance' => $client->amount - $this->amount_2
+                        $detail = $debt->details()->create([
+
+                            'description' => $this->discharge_description,
+                            'amount' => $this->discharge_amount,
+                            'previus_balance' => $debt->amount,
+                            'actual_balance' => $debt->amount - $this->discharge_amount
                             
                         ]);
+    
+                        if (!$detail) {
 
-                        if($detail){
+                            $this->emit('movement-error', 'Error al registrar el detalle del movimiento.');
+                            return;
+    
+                        } else {
 
-                            //if($client->amount > $this->amount_2){
+                            $debt->Update([
+    
+                                'amount' => $debt->amount - $detail->amount
 
-                                $client->Update([
-
-                                    'amount' => $client->amount - $this->amount_2
-                                ]);
-
-                            /*}else{
-
-                                $client->delete();
-                            }*/
-
+                            ]);
+    
                             $this->cov->update([
                         
-                                'balance' => $this->cov->balance - $this->amount_2
+                                'balance' => $this->cov->balance - $detail->amount
                     
                             ]);
                     
                             $this->cov_det->update([
                 
-                                'egress' => $this->cov_det->egress + $this->amount_2,
-                                'actual_balance' => $this->cov_det->actual_balance - $this->amount_2
+                                'egress' => $this->cov_det->egress + $detail->amount,
+                                'actual_balance' => $this->cov_det->actual_balance - $detail->amount
                 
                             ]);
 
                         }
 
-                    }
+                    break;
 
-                    DB::commit();
-                    $this->emit('item-updated', 'Registro Actualizado');
-                    $this->resetUI();
-                    $this->mount();
-                    $this->render();
-
-                } catch (Exception) {
-                    
-                    DB::rollback();
-                    $this->emit('movement-error', 'Algo salio mal');
                 }
 
-        }else{
+                DB::commit();
+                $this->resetUI();
+                $this->mount();
+                $this->render();
+                $this->emit('item-updated', 'Registro Actualizado.');
 
-            $this->emit('cover-error','Se debe crear caratula del dia');
-            return;
+            } catch (Exception $e) {
+                
+                DB::rollback();
+                //$this->emit('movement-error', $e->getMessage());
+                $this->emit('movement-error', 'Algo salio mal.');
+
+            }
         }
-
     }
 
     protected $listeners = [
@@ -423,10 +447,11 @@ class CostumerReceivables extends Component
     public function resetUI(){
 
         $this->costumer = 'Elegir';
-        $this->description = '';
-        $this->description_2 = '';
         $this->amount = '';
-        $this->amount_2 = 0;
+        $this->description = '';
+        $this->action = 'Elegir';
+        $this->discharge_description = '';
+        $this->discharge_amount = '';
         $this->search = '';
         $this->selected_id = 0;
         $this->data_to_import = null;
