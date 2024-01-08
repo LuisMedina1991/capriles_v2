@@ -21,13 +21,13 @@
                 <div class="col-sm-12 col-md-6">
                     <div class="form-group">
                         <label>Saldo actual</label>
-                        <input type="text" wire:model.lazy="amount" class="form-control" placeholder="Monto a cobrar..." disabled>
+                        <input type="text" wire:model="amount" class="form-control" placeholder="Monto a cobrar..." disabled>
                         @error('amount')
                             <span class="text-danger er">{{ $message }}</span>
                         @enderror
                     </div>
                 </div>
-                <div class="col-sm-12 col-md-12">
+                <div class="col-sm-12">
                     <div class="form-group">
                         <label>Descripcion de la deuda</label>
                         <textarea wire:model.lazy="description" class="form-control" placeholder="Detalles de la deuda..." cols="30" rows="3"></textarea>
@@ -51,22 +51,45 @@
                     </div>
                 </div>
 
-                @if($action != 'Elegir' && $action != 'edicion')
+                @if($action == 'ingreso')
 
                     <div class="col-sm-12 col-md-6">
                         <div class="form-group">
-                            <label>Nuevo Monto</label>
-                            <input type="text" wire:model.lazy="amount_2" class="form-control" placeholder="0.00">
-                            @error('amount_2')
+                            <label>Monto de ingreso</label>
+                            <input type="text" wire:model.lazy="income_amount" class="form-control" placeholder="0.00">
+                            @error('income_amount')
                                 <span class="text-danger er">{{ $message }}</span>
                             @enderror
                         </div>
                     </div>
-                    <div class="col-sm-12 col-md-12">
+                    <div class="col-sm-12">
                         <div class="form-group">
-                            <label>Detalles</label>
-                            <textarea wire:model.lazy="description_2" class="form-control" placeholder="Detalles del movimiento..." cols="30" rows="3"></textarea>
-                            @error('description_2')
+                            <label>Detalles de ingreso</label>
+                            <textarea wire:model.lazy="income_description" class="form-control" placeholder="Detalles del movimiento..." cols="30" rows="3"></textarea>
+                            @error('income_description')
+                                <span class="text-danger er">{{ $message }}</span>
+                            @enderror
+                        </div>
+                    </div>
+
+                @endif
+
+                @if($action == 'egreso')
+
+                    <div class="col-sm-12 col-md-6">
+                        <div class="form-group">
+                            <label>Monto de egreso</label>
+                            <input type="text" wire:model.lazy="discharge_amount" class="form-control" placeholder="0.00">
+                            @error('discharge_amount')
+                                <span class="text-danger er">{{ $message }}</span>
+                            @enderror
+                        </div>
+                    </div>
+                    <div class="col-sm-12">
+                        <div class="form-group">
+                            <label>Detalles de egreso</label>
+                            <textarea wire:model.lazy="discharge_description" class="form-control" placeholder="Detalles del movimiento..." cols="30" rows="3"></textarea>
+                            @error('discharge_description')
                                 <span class="text-danger er">{{ $message }}</span>
                             @enderror
                         </div>
@@ -75,7 +98,6 @@
                 @endif
 
             </div>
-
         </div>
         <div class="modal-footer">
             <button type="button" wire:click.prevent="resetUI()" class="btn btn-dark close-btn text-info" data-dismiss="modal">CERRAR</button>
