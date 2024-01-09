@@ -2,39 +2,44 @@
 
 namespace App\Http\Livewire;
 
-use App\Models\ProviderPayable;
-use Livewire\Component;
-use App\Models\Provider;
-use Livewire\WithPagination;
-use Carbon\Carbon;
+use App\Imports\ProviderPayablesImport;
 use App\Models\Cover;
 use App\Models\Detail;
+use App\Models\ProviderPayable;
+use App\Models\Provider;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Imports\ProviderPayablesImport;
 
 class ProviderPayables extends Component
 {
     use WithPagination;
     use WithFileUploads;
 
-    public $description,$description_2,$reference,$amount,$amount_2,$provider_id,$search,$selected_id,$pageTitle,$componentName,$my_total,$details;
+    public $search,$selected_id,$pageTitle,$componentName,$my_total,$details;
+    public $provider_id,$amount,$description,$action,$discharge_amount,$discharge_description;
     public $from,$to,$cov,$cov_det;
     private $pagination = 20;
     public $data_to_import;
 
-    public function paginationView(){
-
+    public function paginationView()
+    {
         return 'vendor.livewire.bootstrap';
     }
 
-    public function mount(){
-
+    public function mount()
+    {
         $this->pageTitle = 'listado';
         $this->componentName = 'proveedores por pagar';
+        $this->search = '';
+        $this->selected_id = 0;
         $this->provider_id = 'Elegir';
+        $this->amount = '';
+        $this->description = '';
         $this->my_total = 0;
         $this->details = [];
         $this->from = Carbon::parse(Carbon::now())->format('Y-m-d') . ' 00:00:00';
@@ -87,8 +92,8 @@ class ProviderPayables extends Component
 
     }
 
-    public function Store(){
-
+    public function Store()
+    {
         if($this->cov_det != null){
 
             $rules = [
@@ -161,12 +166,19 @@ class ProviderPayables extends Component
     public function Edit(ProviderPayable $payable)
     {
         $this->selected_id = $payable->id;
-        $this->description = $payable->description;
         $this->provider_id = $payable->provider_id;
         $this->amount = floatval($payable->amount);
-        $this->amount_2 = 0;
-        $this->description_2 = '';
+        $this->description = $payable->description;
+        $this->action = 'Elegir';
+        $this->discharge_amount = '';
+        $this->discharge_description = '';
         $this->emit('show-modal2', 'Abrir Modal');
+    }
+
+    public function updatedaction()
+    {
+        $this->discharge_amount = '';
+        $this->discharge_description = '';
     }
 
     public function Update()
@@ -181,28 +193,30 @@ class ProviderPayables extends Component
             $rules = [
 
                 'provider_id' => 'not_in:Elegir',
-                'description' => 'required|min:10|max:255',
                 'amount' => 'required|numeric',
-                'amount_2' => 'required|numeric|gte:0|lte:amount',
-                'description_2' => 'exclude_if:amount_2,0|required|min:10|max:255'
+                'description' => 'required|min:10|max:255',
+                'action' => 'not_in:Elegir',
+                'discharge_amount' => 'exclude_unless:action,egreso|required|numeric|gt:0|lte:amount',
+                'discharge_description' => 'exclude_unless:action,egreso|required|min:10|max:255',
 
             ];
 
             $messages = [
 
                 'provider_id.not_in' => 'Seleccione una opcion',
+                'amount.required' => 'Campo requerido',
+                'amount.numeric' => 'Este campo solo admite numeros',
                 'description.required' => 'Campo requerido',
                 'description.min' => 'Minimo 10 caracteres',
                 'description.max' => 'Maximo 255 caracteres',
-                'amount.required' => 'Campo requerido',
-                'amount.numeric' => 'Este campo solo admite numeros',
-                'amount_2.required' => 'Campo requerido',
-                'amount_2.numeric' => 'Este campo solo admite numeros',
-                'amount_2.gte' => 'El monto a pagar debe ser mayor o igual a 0',
-                'amount_2.lte' => 'El monto a pagar debe ser menor o igual al saldo actual',
-                'description_2.required' => 'Campo requerido',
-                'description_2.min' => 'Minimo 10 caracteres',
-                'description_2.max' => 'Maximo 255 caracteres',
+                'action.not_in' => 'Seleccione una opcion',
+                'discharge_amount.required' => 'Campo requerido',
+                'discharge_amount.numeric' => 'Este campo solo admite numeros',
+                'discharge_amount.gt' => 'El monto debe ser mayor a 0',
+                'discharge_amount.lte' => 'El monto debe ser menor o igual al saldo',
+                'discharge_description.required' => 'Campo requerido',
+                'discharge_description.min' => 'Minimo 10 caracteres',
+                'discharge_description.max' => 'Maximo 255 caracteres',
 
             ];
 
@@ -212,57 +226,62 @@ class ProviderPayables extends Component
             
             try {
 
-                $payable = ProviderPayable::find($this->selected_id);
+                $debt = ProviderPayable::find($this->selected_id);
         
-                if ($this->amount_2 <= 0) {
-                    
-                    $payable->Update([
+                switch ($this->action) {
 
-                        'provider_id' => $this->provider_id,
-                        'description' => $this->description
+                    case 'edicion':
 
-                    ]);
-
-                } else {
-
-                    $detail = $payable->details()->create([
-
-                        'description' => $this->description_2,
-                        'amount' => $this->amount_2,
-                        'previus_balance' => $payable->amount,
-                        'actual_balance' => $payable->amount - $this->amount_2
-                        
-                    ]);
-
-                    if (!$detail) {
-
-                        $this->emit('movement-error', 'Error al registrar el detalle del movimiento.');
-                        return;
-
-                    } else {
-
-                        $payable->Update([
+                        $debt->Update([
 
                             'provider_id' => $this->provider_id,
-                            'description' => $this->description,
-                            'amount' => $payable->amount - $detail->amount
+                            'description' => $this->description
 
                         ]);
 
-                        $this->cov->update([
+                    break;
+
+                    case 'egreso':
+
+                        $detail = $debt->details()->create([
+
+                            'description' => $this->discharge_description,
+                            'amount' => $this->discharge_amount,
+                            'previus_balance' => $debt->amount,
+                            'actual_balance' => $debt->amount - $this->discharge_amount
+                            
+                        ]);
+    
+                        if (!$detail) {
+
+                            $this->emit('movement-error', 'Error al registrar el detalle del movimiento.');
+                            return;
+    
+                        } else {
+
+                            $debt->Update([
+    
+                                'amount' => $debt->amount - $detail->amount
+
+                            ]);
+    
+                            $this->cov->update([
                         
-                            'balance' => $this->cov->balance - $detail->amount
+                                'balance' => $this->cov->balance - $detail->amount
+                    
+                            ]);
+                    
+                            $this->cov_det->update([
                 
-                        ]);
+                                'egress' => $this->cov_det->egress + $detail->amount,
+                                'actual_balance' => $this->cov_det->actual_balance - $detail->amount
                 
-                        $this->cov_det->update([
-            
-                            'egress' => $this->cov_det->egress + $detail->amount,
-                            'actual_balance' => $this->cov_det->actual_balance - $detail->amount
-            
-                        ]);
+                            ]);
 
-                    }
+                        }
+
+                    break;
+
                 }
 
                 DB::commit();
@@ -285,10 +304,11 @@ class ProviderPayables extends Component
         
         'destroy' => 'Destroy',
         'cancel' => 'Cancel',
+
     ];
 
-    public function Destroy(ProviderPayable $payable){
-
+    public function Destroy(ProviderPayable $payable)
+    {
         if($this->cov_det != null){
 
             DB::beginTransaction();
@@ -328,14 +348,14 @@ class ProviderPayables extends Component
         }
     }
 
-    public function Details(ProviderPayable $payable){
-
+    public function Details(ProviderPayable $payable)
+    {
         $this->details = $payable->details;
         $this->emit('show-detail', 'Mostrando modal');
     }
 
-    public function Cancel(Detail $det){
-
+    public function Cancel(Detail $det)
+    {
         if($this->cov_det != null){
 
             $provider = ProviderPayable::firstWhere('id',$det->detailable_id);
@@ -393,8 +413,8 @@ class ProviderPayables extends Component
         
     }
 
-    public function ImportData(){
-
+    public function ImportData()
+    {
         $rules = [
 
             'data_to_import' => 'required|file|max:2048|mimes:csv,xls,xlsx'
@@ -427,12 +447,12 @@ class ProviderPayables extends Component
 
     public function resetUI()
     {
-        $this->description = '';
-        $this->description_2 = '';
-        $this->reference = '';
-        $this->amount = '';
-        $this->amount_2 = 0;
         $this->provider_id = 'Elegir';
+        $this->amount = '';
+        $this->description = '';
+        $this->action = 'Elegir';
+        $this->discharge_amount = '';
+        $this->discharge_description = '';
         $this->search = '';
         $this->selected_id = 0;
         $this->data_to_import = null;
