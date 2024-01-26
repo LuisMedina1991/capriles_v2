@@ -221,6 +221,10 @@
             noty(msg,2)
         });
 
+        window.livewire.on('error-message', msg => {   //evento para mostrar mensajes de error
+            noty(msg,2)
+        });
+
     });
 
     function Confirm(id){

@@ -12,8 +12,8 @@
                 <div class="col-sm-12">
                     <div class="form-group">
                         <label>Monto</label>
-                        <input type="text" wire:model.lazy="amount" class="form-control component-name" placeholder="0.00">
-                        @error('amount')
+                        <input type="text" wire:model.lazy="income_amount" class="form-control component-name" placeholder="0.00">
+                        @error('income_amount')
                             <span class="text-danger er">{{ $message }}</span>
                         @enderror
                     </div>

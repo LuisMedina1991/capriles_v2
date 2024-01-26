@@ -324,53 +324,29 @@
                 @break
 
                 @case('deposito/retiro')
-
-                    <div class="col-sm-12 col-md-6">
+                
+                    <div class="col-sm-12">
                         <div class="form-group">
-                            <label>Titular</label>
-                            <select wire:model="dr1" class="form-control">
+                            <label>Cuenta Bancaria</label>
+                            <select wire:model="bankAccountId" class="form-control">
                                 <option value="Elegir">Elegir</option>
-                                @foreach ($companies as $comp)
-                                    <option value="{{$comp->id}}">{{$comp->description}}</option>
+                                @foreach ($allBankAccounts as $bank_account)
+                                    <option value="{{$bank_account->id}}">{{$bank_account->bank->description}} || {{$bank_account->type}} || {{$bank_account->currency}} || {{$bank_account->company->description}}</option>
                                 @endforeach
                             </select>
-                            @error('dr1')
+                            @error('bankAccountId')
                                 <span class="text-danger er">{{ $message }}</span>
                             @enderror
                         </div>
                     </div>
 
-                    @if($dr1 != 'Elegir')
+                    @if($bankAccountId != 'Elegir')
 
                         <div class="col-sm-12 col-md-6">
                             <div class="form-group">
-                                <label>Banco</label>
-                                <select wire:model="dr2" class="form-control">
-                                    <option value="Elegir">Elegir</option>
-                                    @foreach ($banks as $bank)
-                                        <option value="{{$bank->id}}">{{$bank->description}}</option>
-                                    @endforeach
-                                </select>
-                                @error('dr2')
-                                    <span class="text-danger er">{{ $message }}</span>
-                                @enderror
-                            </div>
-                        </div>
-
-                    @endif
-
-                    @if($dr1 != 'Elegir' && $dr2 != 'Elegir')
-
-                        <div class="col-sm-12 col-md-6">
-                            <div class="form-group">
-                                <label>Tipo de Cuenta</label>
-                                <select wire:model="dr3" class="form-control">
-                                    <option value="Elegir">Elegir</option>
-                                    @foreach ($details as $detail)
-                                        <option value="{{$detail->id}}"><b>{{$detail->type}} # {{$detail->currency}}</b></option>
-                                    @endforeach
-                                </select>
-                                @error('dr3')
+                                <label>Saldo</label>
+                                <input type="text" wire:model="bankAccountBalance" class="form-control" disabled>
+                                @error('bankAccountBalance')
                                     <span class="text-danger er">{{ $message }}</span>
                                 @enderror
                             </div>
@@ -472,6 +448,20 @@
                 @break
 
             @endswitch
+
+            @if($type != 'Elegir')
+
+                <div class="col-sm-12 col-md-6">
+                    <div class="form-group">
+                        <label>Monto de Egreso</label>
+                        <input type="text" wire:model.lazy="discharge_amount" class="form-control" placeholder="0.00">
+                        @error('discharge_amount')
+                            <span class="text-danger er">{{ $message }}</span>
+                        @enderror
+                    </div>
+                </div>
+
+            @endif
             
         @break
 
@@ -1044,52 +1034,28 @@
 
                 @case('deposito/retiro')
 
-                    <div class="col-sm-12 col-md-6">
+                    <div class="col-sm-12">
                         <div class="form-group">
-                            <label>Titular</label>
-                            <select wire:model="dr1" class="form-control">
+                            <label>Cuenta Bancaria</label>
+                            <select wire:model="bankAccountId" class="form-control">
                                 <option value="Elegir">Elegir</option>
-                                @foreach ($companies as $comp)
-                                    <option value="{{$comp->id}}">{{$comp->description}}</option>
+                                @foreach ($allBankAccounts as $bank_account)
+                                    <option value="{{$bank_account->id}}">{{$bank_account->bank->description}} || {{$bank_account->type}} || {{$bank_account->currency}} || {{$bank_account->company->description}}</option>
                                 @endforeach
                             </select>
-                            @error('dr1')
+                            @error('bankAccountId')
                                 <span class="text-danger er">{{ $message }}</span>
                             @enderror
                         </div>
                     </div>
 
-                    @if($dr1 != 'Elegir')
+                    @if($bankAccountId != 'Elegir')
 
                         <div class="col-sm-12 col-md-6">
                             <div class="form-group">
-                                <label>Banco</label>
-                                <select wire:model="dr2" class="form-control">
-                                    <option value="Elegir">Elegir</option>
-                                    @foreach ($banks as $bank)
-                                        <option value="{{$bank->id}}">{{$bank->description}}</option>
-                                    @endforeach
-                                </select>
-                                @error('dr2')
-                                    <span class="text-danger er">{{ $message }}</span>
-                                @enderror
-                            </div>
-                        </div>
-
-                    @endif
-
-                    @if($dr1 != 'Elegir' && $dr2 != 'Elegir')
-
-                        <div class="col-sm-12 col-md-6">
-                            <div class="form-group">
-                                <label>Tipo de Cuenta</label>
-                                <select wire:model="dr3" class="form-control">
-                                    <option value="Elegir">Elegir</option>
-                                    @foreach ($details as $detail)
-                                        <option value="{{$detail->id}}"><b>{{$detail->type}} # {{$detail->currency}}</b></option>
-                                    @endforeach
-                                </select>
-                                @error('dr3')
+                                <label>Saldo</label>
+                                <input type="text" wire:model="bankAccountBalance" class="form-control" disabled>
+                                @error('bankAccountBalance')
                                     <span class="text-danger er">{{ $message }}</span>
                                 @enderror
                             </div>
@@ -1101,19 +1067,24 @@
                     
             @endswitch
 
+            @if($type != 'Elegir')
+
+                <div class="col-sm-12 col-md-6">
+                    <div class="form-group">
+                        <label>Monto de Ingreso</label>
+                        <input type="text" wire:model.lazy="income_amount" class="form-control" placeholder="0.00">
+                        @error('income_amount')
+                            <span class="text-danger er">{{ $message }}</span>
+                        @enderror
+                    </div>
+                </div>
+
+            @endif
+
         @break
             
     @endswitch
 
-    <div class="col-sm-12 col-md-6">
-        <div class="form-group">
-            <label>Monto</label>
-            <input type="text" wire:model.lazy="amount" class="form-control" placeholder="0.00">
-        </div>
-        @error('amount')
-            <span class="text-danger er">{{ $message }}</span>
-        @enderror
-    </div>
 </div>
 
 @include('common.modalFooter')
