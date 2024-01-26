@@ -143,59 +143,46 @@ class Paydesks extends Component
 
     }
 
-    public function ReportsByDate(){
+    public function ReportsByDate()
+    {
+        if ($this->reportRange == 0) {
 
-        /*$pos = Paydesk::where('action','ingreso')->get();
-
-        foreach($pos as $p){
-
-            $this->i_total += $p->amount;
-        }
-
-        $neg = Paydesk::where('action','egreso')->get();
-
-        foreach($neg as $n){
-
-            $this->e_total += $n->amount;
-        }*/
-
-        //$this->my_total = $this->gen->balance;
-
-        if($this->reportRange == 0){
-
-            $fecha1 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 00:00:00';
-            $fecha2 = Carbon::parse(Carbon::today())->format('Y-m-d') . ' 23:59:59';
-
-        }else{
-
-            $fecha1 = Carbon::parse($this->dateFrom)->format('Y-m-d') . ' 00:00:00';
-            $fecha2 = Carbon::parse($this->dateTo)->format('Y-m-d') . ' 23:59:59';
-
-        }
-
-        if($this->reportRange == 1 && ($this->dateFrom == '' || $this->dateTo == '')){
-
-            $this->emit('paydesk-error', 'Seleccione fecha de inicio y fecha de fin');
-            return;
-        }
-
-        if($this->reportType == 0){
-
-            $this->details_2 = Paydesk::orderBy('action', 'asc')->whereBetween('created_at', [$fecha1, $fecha2])->get();
+            $fecha1 = $this->from;
+            $fecha2 = $this->to;
             $this->my_total = $this->gen->balance;
-            
-        }else{
-            
-            $this->details_2 = Paydesk::orderBy('id', 'asc')->whereBetween('created_at', [$fecha1, $fecha2])->where('type',$this->reportType)->get();
 
-            if((count($this->details_2->where('action','ingreso')) > 0) && (count($this->details_2->where('action','egreso')) > 0)){
+        } elseif ($this->reportRange == 1) {
 
-                $this->my_total = $this->details_2->where('action','ingreso')->sum('amount') - $this->details_2->where('action','egreso')->sum('amount');
+            if ($this->dateFrom == '' || $this->dateTo == '') {
 
-            }else{
+                $this->emit('error-message', 'Seleccione fecha de inicio y fecha de fin.');
+                return;
 
-                $this->my_total = $this->details_2->sum('amount');
+            } else {
+
+                $fecha1 = $this->dateFrom . ' 00:00:00';
+                $fecha2 = $this->dateTo . ' 23:59:59';
+
+                if ($this->gen->details->whereBetween('created_at',[$fecha1, $fecha2])->last()) {
+
+                    $this->my_total = $this->gen->details->whereBetween('created_at',[$fecha1, $fecha2])->last()->actual_balance;
+    
+                } else {
+    
+                    $this->my_total = 0;
+    
+                }
             }
+        }
+
+        if ($this->reportType == 0) {
+
+            $this->details_2 = Paydesk::orderBy('action')->whereBetween('created_at', [$fecha1, $fecha2])->get();
+            
+        } else {
+            
+            $this->details_2 = Paydesk::orderBy('id')->whereBetween('created_at', [$fecha1, $fecha2])->where('type',$this->reportType)->get();
+
         }
 
         $this->i_total = $this->details_2->where('action','ingreso')->sum('amount');
