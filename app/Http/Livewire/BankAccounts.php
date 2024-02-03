@@ -18,24 +18,32 @@ class BankAccounts extends Component
     use WithPagination;
 
     public $pageTitle,$componentName,$selected_id,$search;
-    public $company_id,$bank_id,$type,$currency,$amount,$action,$income_description,$discharge_description,$income_amount,$discharge_amount;
-    public $from,$to,$ref,$ref_det,$cov,$cov_det;
+    public $company_id,$bank_id,$type,$currency,$amount,$action,$income_description,$income_amount,$discharge_description,$discharge_amount;
+    public $from,$to,$cover_reference,$cover_reference_detail,$bank_account_cover,$bank_account_cover_detail;
     private $pagination = 30;
 
     public function mount()
     {
         $this->pageTitle = 'Listado';
         $this->componentName = 'Cuentas de Banco';
-        $this->bank_id = 'Elegir';
+        $this->selected_id = 0;
+        $this->search = '';
         $this->company_id = 'Elegir';
+        $this->bank_id = 'Elegir';
         $this->type = 'Elegir';
         $this->currency = 'Elegir';
+        $this->amount = '';
+        $this->action = 'Elegir';
+        $this->income_description = '';
+        $this->income_amount = '';
+        $this->discharge_description = '';
+        $this->discharge_amount = '';
         $this->from = Carbon::parse(Carbon::now())->format('Y-m-d') . ' 00:00:00';
         $this->to = Carbon::parse(Carbon::now())->format('Y-m-d') . ' 23:59:59';
-        $this->ref = Cover::firstWhere('description','capital de trabajo inicial');
-        $this->ref_det = $this->ref->details->where('cover_id',$this->ref->id)->whereBetween('created_at',[$this->from, $this->to])->first();
-        $this->cov = [];
-        $this->cov_det = [];
+        $this->cover_reference = Cover::firstWhere('description','capital de trabajo inicial');
+        $this->cover_reference_detail = $this->cover_reference->details->whereBetween('created_at',[$this->from, $this->to])->first();
+        $this->bank_account_cover = null;
+        $this->bank_account_cover_detail = null;
     }
 
     public function paginationView()
@@ -78,7 +86,7 @@ class BankAccounts extends Component
 
     public function Store()
     {
-        if($this->ref_det != null){
+        if($this->cover_reference_detail != null){
 
             $rules = [
                 
@@ -144,8 +152,6 @@ class BankAccounts extends Component
                     DB::commit();
                     $this->emit('item-added', 'Registro Exitoso');
                     $this->resetUI();
-                    $this->mount();
-                    $this->render();
 
                 } catch (Exception) {
                     
@@ -187,7 +193,7 @@ class BankAccounts extends Component
 
     public function Update()
     {
-        if (!$this->ref_det) {
+        if (!$this->cover_reference_detail) {
 
             $this->emit('cover-error','Se debe crear caratula del dia.');
             return;
@@ -243,8 +249,8 @@ class BankAccounts extends Component
                 $account = BankAccount::find($this->selected_id);
                 $bank_name = Bank::firstWhere('id',$account->bank_id)->description;
                 $company_name = Company::firstWhere('id',$account->company_id)->description;
-                $this->cov = Cover::firstWhere('description',$bank_name . ' ' . $account->type . ' ' . $account->currency . ' ' . $company_name);
-                $this->cov_det = $this->cov->details->whereBetween('created_at',[$this->from, $this->to])->first();
+                $this->bank_account_cover = Cover::firstWhere('description',$bank_name . ' ' . $account->type . ' ' . $account->currency . ' ' . $company_name);
+                $this->bank_account_cover_detail = $this->bank_account_cover->details->whereBetween('created_at',[$this->from, $this->to])->first();
 
                 switch ($this->action) {
 
@@ -284,16 +290,16 @@ class BankAccounts extends Component
                 
                             ]);
                 
-                            $this->cov->update([
+                            $this->bank_account_cover->update([
                                 
-                                'balance' => $this->cov->balance + $detail->amount
+                                'balance' => $this->bank_account_cover->balance + $detail->amount
                     
                             ]);
                     
-                            $this->cov_det->update([
+                            $this->bank_account_cover_detail->update([
                 
-                                'ingress' => $this->cov_det->ingress + $detail->amount,
-                                'actual_balance' => $this->cov_det->actual_balance + $detail->amount
+                                'ingress' => $this->bank_account_cover_detail->ingress + $detail->amount,
+                                'actual_balance' => $this->bank_account_cover_detail->actual_balance + $detail->amount
                 
                             ]);
 
@@ -325,16 +331,16 @@ class BankAccounts extends Component
                 
                             ]);
                 
-                            $this->cov->update([
+                            $this->bank_account_cover->update([
                                 
-                                'balance' => $this->cov->balance - $detail->amount
+                                'balance' => $this->bank_account_cover->balance - $detail->amount
                     
                             ]);
                     
-                            $this->cov_det->update([
+                            $this->bank_account_cover_detail->update([
                 
-                                'egress' => $this->cov_det->egress + $detail->amount,
-                                'actual_balance' => $this->cov_det->actual_balance - $detail->amount
+                                'egress' => $this->bank_account_cover_detail->egress + $detail->amount,
+                                'actual_balance' => $this->bank_account_cover_detail->actual_balance - $detail->amount
                 
                             ]);
 
@@ -345,10 +351,8 @@ class BankAccounts extends Component
                 }
 
                 DB::commit();
-                $this->resetUI();
-                $this->mount();
-                $this->render();
                 $this->emit('item-updated', 'Registro actualizado.');
+                $this->resetUI();
 
             } catch (Exception $e) {
                 
@@ -367,7 +371,7 @@ class BankAccounts extends Component
 
     public function Destroy(BankAccount $account)
     {
-        if($this->ref_det != null){
+        if($this->cover_reference_detail != null){
 
             DB::beginTransaction();
             
@@ -375,21 +379,19 @@ class BankAccounts extends Component
         
                     $bank = Bank::firstWhere('id',$account->bank_id)->description;
                     $company = Company::firstWhere('id',$account->company_id)->description;
-                    $this->cov = Cover::firstWhere('description',$bank . ' ' . $account->type . ' ' . $account->currency . ' ' . $company);
+                    $this->bank_account_cover = Cover::firstWhere('description',$bank . ' ' . $account->type . ' ' . $account->currency . ' ' . $company);
 
-                    if($this->cov->details->where('cover_id',$this->cov->id)->whereBetween('created_at',[$this->from, $this->to])->first() != null){
+                    if($this->bank_account_cover->details->whereBetween('created_at',[$this->from, $this->to])->first() != null){
 
-                        $this->cov_det = $this->cov->details->where('cover_id',$this->cov->id)->whereBetween('created_at',[$this->from, $this->to])->first();
-                        $this->cov_det->delete();
+                        $this->bank_account_cover_detail = $this->bank_account_cover->details->whereBetween('created_at',[$this->from, $this->to])->first();
+                        $this->bank_account_cover_detail->delete();
                     }
                     
-                    $this->cov->delete();
+                    $this->bank_account_cover->delete();
                     $account->delete();
                     DB::commit();
                     $this->emit('item-deleted', 'Registro eliminado');
                     $this->resetUI();
-                    $this->mount();
-                    $this->render();
 
                 } catch (Exception) {
                     
@@ -407,19 +409,8 @@ class BankAccounts extends Component
 
     public function resetUI()
     {
-        $this->company_id = 'Elegir';
-        $this->bank_id = 'Elegir';
-        $this->type = 'Elegir';
-        $this->currency = 'Elegir';
-        $this->amount = '';
-        $this->income_description = '';
-        $this->income_amount = '';
-        $this->discharge_description = '';
-        $this->discharge_amount = '';
-        $this->action = 'Elegir';
-        $this->search = '';
-        $this->selected_id = 0;
         $this->resetValidation();
-        $this->resetPage();
+        $this->mount();
+        $this->render();
     }
 }
