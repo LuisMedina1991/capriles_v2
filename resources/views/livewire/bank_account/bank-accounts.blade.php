@@ -87,11 +87,7 @@
             $('#theModal2').modal('show')
         });
 
-        window.livewire.on('movement-error', Msg => {   //evento para los errores del componente
-            noty(Msg,2)
-        });
-
-        window.livewire.on('cover-error', msg=>{    //evento al eliminar registro
+        window.livewire.on('error-message', msg => {   //evento para mostrar los mensajes de error del componente
             noty(msg,2)
         });
 
