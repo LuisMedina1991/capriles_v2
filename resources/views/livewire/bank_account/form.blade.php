@@ -59,10 +59,10 @@
         <div class="form-group">
             <label>Saldo</label>
             <input type="text" wire:model.lazy="amount" class="form-control" placeholder="0.00">
+            @error('amount')
+                <span class="text-danger er">{{ $message }}</span>
+            @enderror
         </div>
-        @error('amount')
-            <span class="text-danger er">{{ $message }}</span>
-        @enderror
     </div>
 </div>
 
