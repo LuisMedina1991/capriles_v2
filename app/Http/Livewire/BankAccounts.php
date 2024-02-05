@@ -86,7 +86,12 @@ class BankAccounts extends Component
 
     public function Store()
     {
-        if($this->cover_reference_detail != null){
+        if (!$this->cover_reference_detail) {
+
+            $this->emit('error-message','Se debe crear caratula del dia.');
+            return;
+
+        } else {
 
             $rules = [
                 
@@ -94,77 +99,80 @@ class BankAccounts extends Component
                 'bank_id' => 'not_in:Elegir',
                 'type' => 'not_in:Elegir',
                 'currency' => 'not_in:Elegir',
-                'amount' => 'required|numeric'
+                'amount' => 'required|numeric|size:0',
+
             ];
 
             $messages = [
 
-                'company_id.not_in' => 'Elija un propietario para la cuenta',
-                'bank_id.not_in' => 'Elija un banco para la cuenta',
-                'type.not_in' => 'Elija un tipo de cuenta',
-                'currency.not_in' => 'Elija una moneda para la cuenta',
-                'amount.required' => 'El saldo de la cuenta es requerido',
-                'amount.numeric' => 'Este campo solo admite numeros'
+                'company_id.not_in' => 'Seleccione una opcion',
+                'bank_id.not_in' => 'Seleccione una opcion',
+                'type.not_in' => 'Seleccione una opcion',
+                'currency.not_in' => 'Seleccione una opcion',
+                'amount.required' => 'Campo requerido',
+                'amount.numeric' => 'Este campo solo admite numeros',
+                'amount.size' => 'El saldo debe ser igual a 0',
+
             ];
 
             $this->validate($rules, $messages);
 
-            DB::beginTransaction();
+            $bank_name = Bank::find($this->bank_id)->description;
+            $company_name = Company::find($this->company_id)->description;
+            $exist = Cover::firstWhere('description',$bank_name . ' ' . $this->type . ' ' . $this->currency . ' ' . $company_name);
+
+            if ($exist) {
+
+                $this->emit('error-message', 'Ya existe una cuenta bancaria identica.');
+                return;
+
+            } else {
+
+                DB::beginTransaction();
             
                 try {
                 
-                    $account = BankAccount::create([
-
+                    $new_bank_account = BankAccount::create([
+    
                         'type' => $this->type,
                         'currency' => $this->currency,
                         'amount' => $this->amount,
-                        'company_id' => $this->company_id,
-                        'bank_id' => $this->bank_id
+                        'bank_id' => $this->bank_id,
+                        'company_id' => $this->company_id
+
+                    ]);
+    
+                    $new_bank_account_cover = Cover::create([
+                
+                        'description' => $bank_name . ' ' . $new_bank_account->type . ' ' . $new_bank_account->currency . ' ' . $company_name,
+                        'type' => 'depositos',
+                        'balance' => $new_bank_account->amount
+
                     ]);
 
-                    if($account){
+                    $new_bank_account_cover->details()->create([
 
-                        $bank = Bank::firstWhere('id',$account->bank_id)->description;
-                        $company = Company::firstWhere('id',$account->company_id)->description;
+                        'type' => $new_bank_account_cover->type,
+                        'previus_day_balance' => $new_bank_account_cover->balance,
+                        'ingress' => 0,
+                        'egress' => 0,
+                        'actual_balance' => $new_bank_account_cover->balance
 
-                        $cover = Cover::create([
-                
-                            'description' => $bank . ' ' . $account->type . ' ' . $account->currency . ' ' . $company,
-                            'type' => 'depositos',
-                            'balance' => $account->amount
-
-                        ]);
-
-                        if($cover){
-
-                            CoverDetail::create([
-                
-                                'cover_id' => $cover->id,
-                                'type' => $cover->type,
-                                'previus_day_balance' => $cover->balance,
-                                'ingress' => 0,
-                                'egress' => 0,
-                                'actual_balance' => $cover->balance
-                            ]);
-                        }
-                    }
-
+                    ]);
+    
                     DB::commit();
-                    $this->emit('item-added', 'Registro Exitoso');
+                    $this->emit('item-added', 'Registro Exitoso.');
                     $this->resetUI();
-
-                } catch (Exception) {
+    
+                } catch (Exception $e) {
                     
                     DB::rollback();
-                    $this->emit('movement-error', 'Algo salio mal');
+                    //$this->emit('error-message', $e->getMessage());
+                    $this->emit('error-message', 'Algo salio mal.');
+    
                 }
-
-        }else{
-
-            $this->emit('cover-error','Se debe crear caratula del dia');
-            return;
+            }
         }
-
     }
 
     public function Edit(BankAccount $account)
@@ -195,7 +203,7 @@ class BankAccounts extends Component
     {
         if (!$this->cover_reference_detail) {
 
-            $this->emit('cover-error','Se debe crear caratula del dia.');
+            $this->emit('error-message','Se debe crear caratula del dia.');
             return;
 
         } else {
@@ -279,7 +287,7 @@ class BankAccounts extends Component
                     
                         if (!$detail) {
 
-                            $this->emit('movement-error', 'Error al registrar el detalle del movimiento.');
+                            $this->emit('error-message', 'Error al registrar el detalle del movimiento.');
                             return;
 
                         } else {
@@ -320,7 +328,7 @@ class BankAccounts extends Component
                     
                         if (!$detail) {
 
-                            $this->emit('movement-error', 'Error al registrar el detalle del movimiento.');
+                            $this->emit('error-message', 'Error al registrar el detalle del movimiento.');
                             return;
 
                         } else {
@@ -357,8 +365,8 @@ class BankAccounts extends Component
             } catch (Exception $e) {
                 
                 DB::rollback();
-                //$this->emit('movement-error', $e->getMessage());
-                $this->emit('movement-error', 'Algo salio mal.');
+                //$this->emit('error-message', $e->getMessage());
+                $this->emit('error-message', 'Algo salio mal.');
 
             }
         }
