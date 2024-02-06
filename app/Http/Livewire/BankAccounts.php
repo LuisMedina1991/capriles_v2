@@ -6,7 +6,6 @@ use App\Models\Bank;
 use App\Models\BankAccount;
 use App\Models\Company;
 use App\Models\Cover;
-use App\Models\CoverDetail;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
@@ -377,42 +376,55 @@ class BankAccounts extends Component
         'destroy' => 'Destroy'
     ];
 
-    public function Destroy(BankAccount $account)
+    public function Destroy(BankAccount $bank_account)
     {
-        if($this->cover_reference_detail != null){
+        $bank_name = Bank::find($bank_account->bank_id)->description;
+        $company_name = Company::find($bank_account->company_id)->description;
+        $this->bank_account_cover = Cover::firstWhere('description',$bank_name . ' ' . $bank_account->type . ' ' . $bank_account->currency . ' ' . $company_name);
 
-            DB::beginTransaction();
-            
-                try {
-        
-                    $bank = Bank::firstWhere('id',$account->bank_id)->description;
-                    $company = Company::firstWhere('id',$account->company_id)->description;
-                    $this->bank_account_cover = Cover::firstWhere('description',$bank . ' ' . $account->type . ' ' . $account->currency . ' ' . $company);
+        if (!$this->bank_account_cover) {
 
-                    if($this->bank_account_cover->details->whereBetween('created_at',[$this->from, $this->to])->first() != null){
-
-                        $this->bank_account_cover_detail = $this->bank_account_cover->details->whereBetween('created_at',[$this->from, $this->to])->first();
-                        $this->bank_account_cover_detail->delete();
-                    }
-                    
-                    $this->bank_account_cover->delete();
-                    $account->delete();
-                    DB::commit();
-                    $this->emit('item-deleted', 'Registro eliminado');
-                    $this->resetUI();
-
-                } catch (Exception) {
-                    
-                    DB::rollback();
-                    $this->emit('movement-error', 'Algo salio mal');
-                }
-
-        }else{
-
-            $this->emit('cover-error','Se debe crear caratula del dia');
+            $this->emit('error-message','No se ha encontrado caratula para esta cuenta.');
             return;
-        }
 
+        } else {
+
+            $this->bank_account_cover_detail = $this->bank_account_cover->details->whereBetween('created_at',[$this->from, $this->to])->first();
+
+            if (!$this->bank_account_cover_detail) {
+
+                $this->emit('error-message','No se ha encontrado caratula del dia para esta cuenta.');
+                return;
+
+            } else {
+
+                if ($bank_account->amount != 0 || $this->bank_account_cover->balance != 0 || $this->bank_account_cover_detail->actual_balance != 0) {
+
+                    $this->emit('error-message', 'El saldo de la cuenta y su caratula relacionada deben ser exactamente 0 para poder eliminarla.');
+                    return;
+    
+                } else {
+    
+                    DB::beginTransaction();
+            
+                    try {
+                        
+                        $this->bank_account_cover->delete();
+                        $bank_account->delete();
+                        DB::commit();
+                        $this->emit('item-deleted', 'Registro eliminado.');
+                        $this->resetUI();
+    
+                    } catch (Exception $e) {
+                        
+                        DB::rollback();
+                        //$this->emit('error-message', $e->getMessage());
+                        $this->emit('error-message', 'Algo salio mal.');
+    
+                    }
+                }
+            }
+        }
     }
 
     public function resetUI()
