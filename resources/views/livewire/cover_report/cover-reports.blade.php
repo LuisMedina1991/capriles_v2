@@ -142,7 +142,11 @@
                                     @foreach ($details as $detail)
                                         @if($detail->type == 'balance_mensual' || $detail->type == 'mercaderia' || $detail->type == 'efectivo' || $detail->type == 'creditos' || $detail->type == 'depositos')
                                             <tr>
-                                                <td class="text-center text-uppercase"><h6>{{ $detail->cover->description }}</h6></td>
+                                                @if($detail->cover)
+                                                    <td class="text-center text-uppercase"><h6>{{ $detail->cover->description }}</h6></td>
+                                                @else
+                                                    <td class="text-center text-uppercase"><h6>cuenta eliminada</h6></td>
+                                                @endif
                                                 <td class="text-center"><h6>${{ number_format($detail->previus_day_balance,2) }}</h6></td>
                                                 <td class="text-center"><h6>${{ number_format($detail->ingress,2) }}</h6></td>
                                                 <td class="text-center"><h6>${{ number_format($detail->egress,2) }}</h6></td>
