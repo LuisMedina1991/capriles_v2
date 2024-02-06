@@ -604,11 +604,14 @@ class ExportController extends Controller
                 $sum7 += $detail->actual_balance;
             }
 
-            if($detail->cover->description == 'capital de trabajo inicial'){
+            if ($detail->cover) {
 
-                $sum9 = $detail->actual_balance;
+                if ($detail->cover->description == 'capital de trabajo inicial') {
+
+                    $sum9 = $detail->actual_balance;
+                    
+                }
             }
-            
         }
 
         $sum3 = $sum1 + $sum2;
