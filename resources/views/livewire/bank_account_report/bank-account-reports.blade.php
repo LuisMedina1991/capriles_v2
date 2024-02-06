@@ -9,18 +9,18 @@
                     <div class="col-sm-12 col-md-3">
                         <div class="col">
                             <div class="col-sm-12">
-                                <h6>Elige la cuenta de banco</h6>
+                                <h6>Seleccione la cuenta bancaria</h6>
                                 <div class="form-group">
-                                    <select wire:model="company_id" class="form-control">
-                                        <option value="0">Todos</option>
-                                        @foreach ($accounts as $account)
-                                            <option value="{{$account->id}}">{{$account->bank->description}} || {{$account->type}} || {{$account->currency}} || {{$account->company->description}}</option>
+                                    <select wire:model="bank_account_id" class="form-control">
+                                        <option value="0">Todas</option>
+                                        @foreach ($bank_accounts as $bank_account)
+                                            <option value="{{$bank_account->id}}">{{$bank_account->bank->description}} || {{$bank_account->type}} || {{$bank_account->currency}} || {{$bank_account->company->description}}</option>
                                         @endforeach
                                     </select>
                                 </div>
                             </div>
                             <div class="col-sm-12">
-                                <h6>Elige el alcance del reporte</h6>
+                                <h6>Seleccione el alcance del reporte</h6>
                                 <div class="form-group">
                                     <select wire:model="reportRange" class="form-control">
                                         <option value="0">Movimientos del dia</option>
@@ -31,20 +31,20 @@
                             <div class="col-sm-12 mt-2">
                                 <h6>Fecha inicial</h6>
                                 <div class="form-group">
-                                    <input type="text" wire:model="dateFrom" class="form-control flatpickr" placeholder="Click para elegir">
+                                    <input type="text" wire:model="date_field_1" class="form-control flatpickr" placeholder="Click para elegir">
                                 </div>
                             </div>
                             <div class="col-sm-12 mt-2">
                                 <h6>Fecha final</h6>
                                 <div class="form-group">
-                                    <input type="text" wire:model="dateTo" class="form-control flatpickr" placeholder="Click para elegir">
+                                    <input type="text" wire:model="date_field_2" class="form-control flatpickr" placeholder="Click para elegir">
                                 </div>
                             </div>
                             <div class="col-sm-12">
                                 {{--<button wire:click="$refresh" class="btn btn-dark btn-block">
                                     Consultar
                                 </button>--}}
-                                <a href="{{ url('bank_account_report/pdf' . '/' . $company_id . '/' . $reportRange . '/' . $dateFrom . '/' . $dateTo) }}" 
+                                <a href="{{ url('bank_account_report/pdf' . '/' . $bank_account_id . '/' . $reportRange . '/' . $date_field_1 . '/' . $date_field_2) }}" 
                                 class="btn btn-dark btn-block {{count($details) < 1 ? 'disabled' : ''}}" target="_blank">
                                     Generar PDF
                                 </a>
@@ -57,8 +57,8 @@
                                 <thead class="text-white" style="background: #3B3F5C">
                                     <tr>
                                         <th class="table-th text-white text-center">DESCRIPCION</th>
-                                        <th class="table-th text-white text-center">MONTO</th>
                                         <th class="table-th text-white text-center">SALDO PREVIO</th>
+                                        <th class="table-th text-white text-center">MONTO</th>
                                         <th class="table-th text-white text-center">SALDO ACTUAL</th>
                                         <th class="table-th text-white text-center">FECHA</th>
                                         @if($reportRange == 0)
@@ -78,8 +78,8 @@
                                     @foreach ($details as $detail)           
                                     <tr>
                                         <td class="text-center"><h6>{{ $detail->description }}</h6></td>
-                                        <td class="text-center"><h6>${{ number_format($detail->amount,2) }}</h6></td>
                                         <td class="text-center"><h6>${{ number_format($detail->previus_balance,2) }}</h6></td>
+                                        <td class="text-center"><h6>${{ number_format($detail->amount,2) }}</h6></td>
                                         <td class="text-center"><h6>${{ number_format($detail->actual_balance,2) }}</h6></td>
                                         <td class="text-center"><h6>{{\Carbon\Carbon::parse($detail->created_at)->format('d-m-Y')}}</h6></td>
                                         @if($reportRange == 0)
