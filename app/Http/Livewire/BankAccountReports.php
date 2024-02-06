@@ -2,29 +2,33 @@
 
 namespace App\Http\Livewire;
 
-use Livewire\Component;
-use App\Models\BankAccount;
-use App\Models\Detail;
-use App\Models\Cover;
 use App\Models\Bank;
+use App\Models\BankAccount;
 use App\Models\Company;
+use App\Models\Cover;
+use App\Models\Detail;
+use App\Models\Paydesk;
 use Carbon\Carbon;
+use Exception;
+use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 
 class BankAccountReports extends Component
 {   
 
-    public $componentName,$details,$reportRange,$company_id,$dateFrom,$dateTo;
+    public $componentName,$details,$reportRange,$bank_account_id,$now,$dateFrom,$dateTo,$date_field_1,$date_field_2;
 
-    public function mount(){
-
+    public function mount()
+    {
         $this->componentName = 'MOVIMIENTOS BANCARIOS';
         $this->details = [];
         $this->reportRange = 0;
-        $this->company_id = 0;
-        $this->from = Carbon::parse(Carbon::now())->format('Y-m-d') . ' 00:00:00';
-        $this->to = Carbon::parse(Carbon::now())->format('Y-m-d') . ' 23:59:59';
-        //$this->cov = Cover::firstWhere('description',$this->componentName);
-        //$this->cov_det = $this->cov->details->where('cover_id',$this->cov->id)->whereBetween('created_at',[$this->from, $this->to])->first();
+        $this->bank_account_id = 0;
+        $this->date_field_1 = '';
+        $this->date_field_2 = '';
+        $this->now = Carbon::now();
+        $this->dateFrom = $this->now->format('Y-m-d') . ' 00:00:00';
+        $this->dateTo = $this->now->format('Y-m-d') . ' 23:59:59';
     }
 
     public function render()
@@ -33,64 +37,78 @@ class BankAccountReports extends Component
 
         return view('livewire.bank_account_report.bank-account-reports', [
 
-            'accounts' => BankAccount::with('company','bank')->get()
+            'bank_accounts' => BankAccount::with('company','bank')->get()
         ])
         ->extends('layouts.theme.app')
         ->section('content');
     }
 
-    public function ReportsByDate(){
+    public function ReportsByDate()
+    {
+        if ($this->reportRange == 0) {
 
-        if($this->reportRange == 0){
+            $from = $this->now->format('Y-m-d') . ' 00:00:00';
+            $to = $this->now->format('Y-m-d') . ' 23:59:59';
 
-            $from = Carbon::parse(Carbon::now())->format('Y-m-d') . ' 00:00:00';
-            $to = Carbon::parse(Carbon::now())->format('Y-m-d') . ' 23:59:59';
+        } else {
 
-        }else{
-
-            $from = Carbon::parse($this->dateFrom)->format('Y-m-d') . ' 00:00:00';
-            $to = Carbon::parse($this->dateTo)->format('Y-m-d') . ' 23:59:59';
+            $from = $this->date_field_1. ' 00:00:00';
+            $to = $this->date_field_2. ' 23:59:59';
 
         }
 
-        if($this->reportRange == 1 && ($this->dateFrom == '' || $this->dateTo == '')){
+        if ($this->reportRange == 1 && ($this->date_field_1 == '' || $this->date_field_2 == '')) {
 
             $this->emit('report-error', 'Seleccione fecha de inicio y fecha de fin');
+            $this->details = [];
             return;
         }
 
-        if($this->company_id == 0){
+        if ($this->bank_account_id == 0) {
 
-            $this->details = BankAccount::join('details as d','d.detailable_id','bank_accounts.id')
+            /*$this->details = BankAccount::join('details as d','d.detailable_id','bank_accounts.id')
             ->select('d.*')
             ->whereBetween('d.created_at', [$from, $to])
             ->where('d.detailable_type','App\Models\BankAccount')
-            ->orderBy('d.detailable_id', 'asc')->get();
+            ->orderBy('d.detailable_id')->get();*/
 
-        }else{
+            $this->details = Detail::whereBetween('created_at', [$from, $to])
+                ->where('detailable_type','App\Models\BankAccount')
+                ->orderBy('detailable_id')
+                ->get();
+
+        } else {
             
-            $this->details = BankAccount::join('details as d','d.detailable_id','bank_accounts.id')
-            ->select('d.*')
-            ->whereBetween('d.created_at', [$from, $to])
-            ->where('d.detailable_id',$this->company_id)
-            ->where('d.detailable_type','App\Models\BankAccount')
-            ->orderBy('d.detailable_id', 'asc')->get();
-        }
+            /*$this->details = BankAccount::join('details as d','d.detailable_id','bank_accounts.id')
+                ->select('d.*')
+                ->whereBetween('d.created_at', [$from, $to])
+                ->where('d.detailable_id',$this->bank_account_id)
+                ->where('d.detailable_type','App\Models\BankAccount')
+                ->orderBy('d.id')
+                ->get();*/
 
+            $this->details = Detail::whereBetween('created_at', [$from, $to])
+                ->where('detailable_type','App\Models\BankAccount')
+                ->where('detailable_id',$this->bank_account_id)
+                ->orderBy('id')
+                ->get();
+
+        }
     }
 
     protected $listeners = [
 
         'destroy' => 'Destroy'
+        
     ];
 
-    public function Destroy(Detail $det){
-
+    public function Destroy(Detail $det)
+    {
         $account = BankAccount::firstWhere('id',$det->detailable_id);
         $company = Company::firstWhere('id',$account->company_id)->description;
         $bank = Bank::firstWhere('id',$account->bank_id)->description;
         $cov = Cover::firstWhere('description',$bank . ' ' . $account->type . ' ' . $account->currency . ' ' . $company);
-        $cov_det = $cov->details->where('cover_id',$cov->id)->whereBetween('created_at',[$this->from, $this->to])->first();
+        $cov_det = $cov->details->where('cover_id',$cov->id)->whereBetween('created_at',[$this->dateFrom, $this->dateTo])->first();
 
         if($det->actual_balance > $det->previus_balance){
 
