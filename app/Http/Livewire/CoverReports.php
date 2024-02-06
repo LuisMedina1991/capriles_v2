@@ -120,9 +120,12 @@ class CoverReports extends Component
                 $this->sum7 += $detail->actual_balance;
             }
 
-            if($detail->cover->description == 'capital de trabajo inicial'){
+            if ($detail->cover) {
 
-                $this->sum9 = $detail->actual_balance;
+                if ($detail->cover->description == 'capital de trabajo inicial') {
+
+                    $this->sum9 = $detail->actual_balance;
+                }
             }
         }
 
