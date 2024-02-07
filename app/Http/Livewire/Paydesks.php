@@ -124,7 +124,7 @@ class Paydesks extends Component
             'antics' => Anticretic::orderby('id','asc')->get(),
             'pays' => Payable::orderby('reference','asc')->get(),
             'payables' => Payable::orderby('reference','asc')->where('amount', '>', 0)->get(),
-            'bills' => Bill::where('amount','>',0)->orderby('reference','asc')->get(),
+            'bills' => Bill::where('type','normal')->where('amount','>',0)->orderby('reference','asc')->get(),
             'appropiations' => Appropriation::orderby('id','asc')->get(),
             'other_providers' => OtherProvider::where('amount','>',0)->orderby('reference','asc')->get(),
             'gyms' => Gym::orderby('id','asc')->get(),
@@ -3054,96 +3054,135 @@ class Paydesks extends Component
                             ]);
                         }
                     
-                    }else{
+                    } else {
 
-                        if($paydesk->type == 'deposito/retiro'){
+                        if ($paydesk->type == 'deposito/retiro') {
 
                             $detail = Detail::find($paydesk->relation);
-                            $account = BankAccount::find($detail->detailable_id);
-                            $bank = Bank::find($account->bank_id)->description;
-                            $company = Company::find($account->company_id)->description;
+                            $bank_account = BankAccount::find($detail->detailable_id);
 
-                            $cov = Cover::firstWhere('description',$bank . ' ' . $account->type . ' ' . $account->currency . ' ' . $company);
-                            $cov_det = $cov->details->where('cover_id',$cov->id)->whereBetween('created_at',[$this->from, $this->to])->first();
+                            if (!$bank_account) {
 
-                            if($paydesk->action == 'ingreso'){
+                                $this->emit('error-message', 'No se ha encontrado la cuenta bancaria relacionada con este movimiento.');
+                                return;
 
-                                $account->update([
-                        
-                                    'amount' => $account->amount + $detail->amount
-                    
-                                ]);
+                            } else {
 
-                                $cov->update([
-                        
-                                    'balance' => $cov->balance + $detail->amount
-                    
-                                ]);
+                                $bank_name = Bank::find($bank_account->bank_id)->description;
+                                $company_name = Company::find($bank_account->company_id)->description;
+                                $bank_account_cover = Cover::firstWhere('description',$bank_name . ' ' . $bank_account->type . ' ' . $bank_account->currency . ' ' . $company_name);
 
-                                $cov_det->update([
+                                if (!$bank_account_cover) {
 
-                                    'egress' => $cov_det->egress - $detail->amount,
-                                    'actual_balance' => $cov_det->actual_balance + $detail->amount
-                    
-                                ]);
+                                    $this->emit('error-message', 'No se ha encontrado caratula para esta cuenta.');
+                                    return;
 
-                                $this->gen->update([
-                            
-                                    'balance' => $this->gen->balance - $detail->amount
-                    
-                                ]);
-                    
-                                $this->gen_det->update([
-                    
-                                    'ingress' => $this->gen_det->ingress - $detail->amount,
-                                    'actual_balance' => $this->gen_det->actual_balance - $detail->amount
-                    
-                                ]);
+                                } else {
 
-                                $detail->delete();
+                                    $bank_account_cover_detail = $bank_account_cover->details->whereBetween('created_at',[$this->from, $this->to])->first();
 
-                                $this->resetUI();
+                                    if (!$bank_account_cover_detail) {
 
-                            }else{
+                                        $this->emit('error-message', 'No se ha encontrado caratula del dia para esta cuenta.');
+                                        return;
 
-                                $account->update([
-                        
-                                    'amount' => $account->amount - $detail->amount
-                    
-                                ]);
+                                    } else {
 
-                                $cov->update([
-                        
-                                    'balance' => $cov->balance - $detail->amount
-                    
-                                ]);
+                                        if ($paydesk->action == 'ingreso') {
 
-                                $cov_det->update([
+                                            if ( ($detail->actual_balance + $detail->amount) != ($bank_account->amount + $detail->amount) ) {
 
-                                    'ingress' => $cov_det->ingress - $detail->amount,
-                                    'actual_balance' => $cov_det->actual_balance - $detail->amount
-                    
-                                ]);
+                                                $this->emit('error-message', 'El saldo no coincide. Anule los movimientos mas recientes.');
+                                                return;
+                
+                                            } else {
 
-                                $this->gen->update([
-                            
-                                    'balance' => $this->gen->balance + $detail->amount
-                    
-                                ]);
-                    
-                                $this->gen_det->update([
-                    
-                                    'egress' => $this->gen_det->egress - $detail->amount,
-                                    'actual_balance' => $this->gen_det->actual_balance + $detail->amount
-                    
-                                ]);
+                                                $bank_account->update([
+                                    
+                                                    'amount' => $bank_account->amount + $detail->amount
+                                    
+                                                ]);
+                
+                                                $bank_account_cover->update([
+                                        
+                                                    'balance' => $bank_account_cover->balance + $detail->amount
+                                    
+                                                ]);
+                
+                                                $bank_account_cover_detail->update([
+                
+                                                    'egress' => $bank_account_cover_detail->egress - $detail->amount,
+                                                    'actual_balance' => $bank_account_cover_detail->actual_balance + $detail->amount
+                                    
+                                                ]);
+                
+                                                $this->gen->update([
+                                            
+                                                    'balance' => $this->gen->balance - $detail->amount
+                                    
+                                                ]);
+                                    
+                                                $this->gen_det->update([
+                                    
+                                                    'ingress' => $this->gen_det->ingress - $detail->amount,
+                                                    'actual_balance' => $this->gen_det->actual_balance - $detail->amount
+                                    
+                                                ]);
+                
+                                                $detail->delete();
 
-                                $detail->delete();
+                                            }
+            
+                                        } else {
 
-                                $this->resetUI();
+                                            if ( ($detail->actual_balance - $detail->amount) != ($bank_account->amount - $detail->amount) ) {
+
+                                                $this->emit('error-message', 'El saldo no coincide. Anule los movimientos mas recientes.');
+                                                return;
+                
+                                            } else {
+
+                                                $bank_account->update([
+                                    
+                                                    'amount' => $bank_account->amount - $detail->amount
+                                    
+                                                ]);
+                
+                                                $bank_account_cover->update([
+                                        
+                                                    'balance' => $bank_account_cover->balance - $detail->amount
+                                    
+                                                ]);
+                
+                                                $bank_account_cover_detail->update([
+                
+                                                    'ingress' => $bank_account_cover_detail->ingress - $detail->amount,
+                                                    'actual_balance' => $bank_account_cover_detail->actual_balance - $detail->amount
+                                    
+                                                ]);
+                
+                                                $this->gen->update([
+                                            
+                                                    'balance' => $this->gen->balance + $detail->amount
+                                    
+                                                ]);
+                                    
+                                                $this->gen_det->update([
+                                    
+                                                    'egress' => $this->gen_det->egress - $detail->amount,
+                                                    'actual_balance' => $this->gen_det->actual_balance + $detail->amount
+                                    
+                                                ]);
+                
+                                                $detail->delete();
+
+                                            }
+                                        }
+                                    }
+                                }
                             }
 
-                        }else{
+                        } else {
 
                             if($paydesk->type == 'Ventas'){
 
@@ -3204,21 +3243,19 @@ class Paydesks extends Component
                     
                     $paydesk->delete();
                     DB::commit();
-                    $this->emit('item-deleted', 'Registro Eliminado');
+                    $this->emit('item-deleted', 'Registro Eliminado.');
                     $this->resetUI();
-                    $this->mount();
-                    $this->render();
 
                 } catch (Exception $e) {
                     
                     DB::rollback();
                     //$this->emit('movement-error', $e->getMessage());
-                    $this->emit('movement-error', 'Algo salio mal');
+                    $this->emit('movement-error', 'Algo salio mal.');
                 }
 
         }else{
 
-            $this->emit('cover-error','Se debe crear caratula del dia');
+            $this->emit('cover-error','Se debe crear caratula del dia.');
             return;
         }
 
