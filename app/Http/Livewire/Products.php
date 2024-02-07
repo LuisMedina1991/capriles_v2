@@ -13,6 +13,8 @@ use Livewire\WithPagination;
 use Exception;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ProductsImport;
+use App\Models\Paydesk;
+use Carbon\Carbon;
 
 class Products extends Component
 {
@@ -20,24 +22,26 @@ class Products extends Component
     use WithFileUploads;
 
     public $descripcion,$marca,$aro,$trilla,$lona,$code,$cost,$price,$state,$search,$selected_id,$pageTitle,$componentName,$image,$catId,$subId;
+    public $now,$dateFrom,$dateTo;
     private $pagination = 40;
     public $data_to_import;
 
-    public function paginationView(){
-
+    public function paginationView()
+    {
         return 'vendor.livewire.bootstrap';
     }
 
-    public function mount(){
-
+    public function mount()
+    {
         $this->pageTitle = 'Listado';
         $this->componentName = 'Productos';
         $this->catId = 1;
         $this->subId = 'Elegir';
         $this->state = 'Elegir';
         $this->data_to_import = null;
-        //$this->subcategories = [];
-
+        $this->now = Carbon::now();
+        $this->dateFrom = $this->now->format('Y-m-d') . ' 00:00:00';
+        $this->dateTo = $this->now->format('Y-m-d') . ' 23:59:59';
     }
 
     public function render()
@@ -198,78 +202,106 @@ class Products extends Component
 
     }
 
-    public function Update(){
-        
-        $category = Category::find($this->catId);
-        $pivot = $category->subcategories->firstWhere('id',$this->subId)->pivot->id;
-        
+    public function Update()
+    {
         $rules = [
 
             'descripcion' => 'required|min:3|max:20',
             'code' => "required|min:5|max:20|unique:products,code,{$this->selected_id}",
-            'cost' => 'required',
-            'price' => 'required',
-            'catId' => 'required|not_in:Elegir',
-            'subId' => 'required|not_in:Elegir',
+            'cost' => 'required|numeric|gte:0',
+            'price' => 'required|numeric|gte:0',
+            'catId' => 'not_in:Elegir',
+            'subId' => 'not_in:Elegir',
             'state' => 'not_in:Elegir',
+
         ];
 
         $messages = [
 
-            'descripcion.required' => 'La medida del producto es requerida',
-            'descripcion.min' => 'La medida del producto debe contener al menos 3 caracteres',
-            'descripcion.max' => 'La medida del producto debe contener maximo 20 caracteres',
-            'code.required' => 'El codigo del producto es requerido',
-            'code.min' => 'El codigo del producto debe contener al menos 5 caracteres',
-            'code.max' => 'La medida del producto debe contener maximo 20 caracteres',
+            'descripcion.required' => 'Campo requerido',
+            'descripcion.min' => 'Minimo 3 caracteres',
+            'descripcion.max' => 'Maximo 20 caracteres',
+            'code.required' => 'Campo requerido',
+            'code.min' => 'Minimo 5 caracteres',
+            'code.max' => 'Maximo 20 caracteres',
             'code.unique' => 'El codigo de producto ya existe',
-            'cost.required' => 'El costo es requerido',
-            'price.required' => 'El precio es requerido',
-            'catId.required' => 'Seleccione una categoria',
-            'catId.not_in' => 'Elija una opcion',
-            'subId.required' => 'Seleccione una subcategoria',
-            'subId.not_in' => 'Elija una opcion',
+            'cost.required' => 'Campo requerido',
+            'cost.numeric' => 'Este campo solo admite numeros',
+            'cost.gte' => 'El monto debe ser mayor o igual a 0',
+            'price.required' => 'Campo requerido',
+            'price.numeric' => 'Este campo solo admite numeros',
+            'price.gte' => 'El monto debe ser mayor o igual a 0',
+            'catId.not_in' => 'Seleccione una opcion',
+            'subId.not_in' => 'Seleccione una opcion',
             'state.not_in' => 'Seleccione una opcion',
+            
         ];
 
         $this->validate($rules, $messages);
 
         $product = Product::find($this->selected_id);
-        //dd($product->imagen);
-        $product->Update([
 
-            'description' => $this->descripcion,
-            'brand' => $this->marca,
-            'ring' => $this->aro,
-            'threshing' => $this->trilla,
-            'tarp' => $this->lona,
-            'code' => $this->code,
-            'cost' => $this->cost,
-            'price' => $this->price,
-            'category_subcategory_id' => $pivot,
-            'state_id' => $this->state
-        ]);
+        if ($product->cost != $this->cost) {
 
-        /*if($this->image){
-            
-            $customFileName = uniqid() . '_.' . $this->image->extension();
-            $this->image->storeAs('public/products', $customFileName);
-            $imageTemp = $product->imagen;
-            $product->imagen = $customFileName;
-            $product->image()->create(['url' => $customFileName]);
-            //$product->save();
+            $paydesk = Paydesk::whereBetween('created_at', [$this->dateFrom, $this->dateTo])->where('type', 'Ventas')->get();
 
-            if($imageTemp != null){
-                
-                if(file_exists('storage/products/' . $imageTemp )){
-                    
-                    unlink('storage/products/' . $imageTemp);
-                }
+            if (count($paydesk) > 0) {
+    
+                $this->emit('movement-error', 'Anule las ventas del dia desde caja general primero.');
+                return;
+    
             }
-        }*/
 
-        $this->resetUI();
-        $this->emit('item-updated', 'Registro Actualizado');
+            if ( ($product->offices->sum('pivot.stock') ) > 0) {
+
+                $this->emit('movement-error', 'No se permite cambiar el costo a un producto con stock activo.');
+                return;
+    
+            }
+
+        } else {
+
+            $category = Category::find($this->catId);
+            $pivot = $category->subcategories->firstWhere('id',$this->subId)->pivot->id;
+    
+            $product->Update([
+    
+                'description' => $this->descripcion,
+                'brand' => $this->marca,
+                'ring' => $this->aro,
+                'threshing' => $this->trilla,
+                'tarp' => $this->lona,
+                'code' => $this->code,
+                'cost' => $this->cost,
+                'price' => $this->price,
+                'category_subcategory_id' => $pivot,
+                'state_id' => $this->state
+
+            ]);
+
+            /*if ($this->image) {
+            
+                $customFileName = uniqid() . '_.' . $this->image->extension();
+                $this->image->storeAs('public/products', $customFileName);
+                $imageTemp = $product->imagen;
+                $product->imagen = $customFileName;
+                $product->image()->create(['url' => $customFileName]);
+                //$product->save();
+
+                if ($imageTemp != null) {
+                    
+                    if (file_exists('storage/products/' . $imageTemp )) {
+                        
+                        unlink('storage/products/' . $imageTemp);
+
+                    }
+                }
+            }*/
+
+            $this->emit('item-updated', 'Registro Actualizado.');
+            $this->resetUI();
+
+        }
     }
 
     protected $listeners = [
