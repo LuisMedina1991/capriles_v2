@@ -99,84 +99,141 @@ class BankAccountReports extends Component
     protected $listeners = [
 
         'destroy' => 'Destroy'
-        
+
     ];
 
-    public function Destroy(Detail $det)
+    public function Destroy(Detail $detail)
     {
-        $account = BankAccount::firstWhere('id',$det->detailable_id);
-        $company = Company::firstWhere('id',$account->company_id)->description;
-        $bank = Bank::firstWhere('id',$account->bank_id)->description;
-        $cov = Cover::firstWhere('description',$bank . ' ' . $account->type . ' ' . $account->currency . ' ' . $company);
-        $cov_det = $cov->details->where('cover_id',$cov->id)->whereBetween('created_at',[$this->dateFrom, $this->dateTo])->first();
+        if ( $this->reportRange != 0 ) {
 
-        if($det->actual_balance > $det->previus_balance){
+            $this->emit('report-error', 'Solo se puede eliminar movimientos del dia.');
+            return;
 
-            if(($det->actual_balance - $det->amount) == ($account->amount - $det->amount)){
-
-                $account->update([
-                
-                    'amount' => $account->amount - $det->amount
-
-                ]);
-
-                $cov->update([
-
-                    'balance' => $cov->balance - $det->amount
-
-                ]);
-
-                $cov_det->update([
-
-                    'ingress' => $cov_det->ingress - $det->amount,
-                    'actual_balance' => $cov_det->actual_balance - $det->amount
-
-                ]);
-
-                $det->delete();
-                $this->emit('report-error', 'Movimiento Anulado.');
-
-            }else{
-
-                $this->emit('report-error', 'El saldo no coincide. Anule los movimientos mas recientes.');
-                return;
-            }
-
-        }else{
-
-            if(($det->actual_balance + $det->amount) == ($account->amount + $det->amount)){
-                
-                $account->update([
-            
-                    'amount' => $account->amount + $det->amount
-    
-                ]);
-    
-                $cov->update([
-        
-                    'balance' => $cov->balance + $det->amount
-    
-                ]);
-    
-                $cov_det->update([
-    
-                    'egress' => $cov_det->egress - $det->amount,
-                    'actual_balance' => $cov_det->actual_balance + $det->amount
-    
-                ]);
-
-                $det->delete();
-                $this->emit('report-error', 'Movimiento Anulado.');
-
-            }else{
-
-                $this->emit('report-error', 'El saldo no coincide. Anule los movimientos mas recientes.');
-                return;
-            }
         }
 
-        $this->mount();
-        $this->render();
-    }
+        $bank_account = BankAccount::find($detail->detailable_id);
 
+        if (!$bank_account) {
+
+            $this->emit('report-error', 'No se ha encontrado la cuenta bancaria relacionada con este movimiento.');
+            return;
+
+        } else {
+
+            /*$paydesk_bank_account_movements = Paydesk::where('type','deposito/retiro')->whereBetween('created_at',[$this->dateFrom, $this->dateTo])->get();
+
+            if ( count($paydesk_bank_account_movements) > 0 ) {
+    
+                $target = $paydesk_bank_account_movements->firstWhere('relation',$detail->id);
+    
+                if ($target) {
+    
+                    $this->emit('report-error', 'El movimiento debe anularse desde caja.');
+                    return;
+    
+                }
+            }*/
+
+            $bank_name = Bank::find($bank_account->bank_id)->description;
+            $company_name = Company::find($bank_account->company_id)->description;
+            $bank_account_cover = Cover::firstWhere('description',$bank_name . ' ' . $bank_account->type . ' ' . $bank_account->currency . ' ' . $company_name);
+
+            if (!$bank_account_cover) {
+
+                $this->emit('report-error', 'No se ha encontrado caratula para esta cuenta.');
+                return;
+
+            } else {
+
+                $bank_account_cover_detail = $bank_account_cover->details->whereBetween('created_at',[$this->dateFrom, $this->dateTo])->first();
+
+                if (!$bank_account_cover_detail) {
+
+                    $this->emit('report-error', 'No se ha encontrado caratula del dia para esta cuenta.');
+                    return;
+
+                } else {
+
+                    DB::beginTransaction();
+                        
+                    try {
+
+                        if ($detail->actual_balance > $detail->previus_balance) {     //significa ingreso
+
+                            if ( ($detail->actual_balance - $detail->amount) != ($bank_account->amount - $detail->amount) ) {
+
+                                $this->emit('report-error', 'El saldo no coincide. Anule los movimientos mas recientes.');
+                                return;
+
+                            } else {
+
+                                $bank_account->update([
+                                
+                                    'amount' => $bank_account->amount - $detail->amount
+
+                                ]);
+
+                                $bank_account_cover->update([
+
+                                    'balance' => $bank_account_cover->balance - $detail->amount
+
+                                ]);
+
+                                $bank_account_cover_detail->update([
+
+                                    'ingress' => $bank_account_cover_detail->ingress - $detail->amount,
+                                    'actual_balance' => $bank_account_cover_detail->actual_balance - $detail->amount
+
+                                ]);
+
+                            }
+
+                        } else {    //significa egreso
+
+                            if ( ($detail->actual_balance + $detail->amount) != ($bank_account->amount + $detail->amount) ) {
+
+                                $this->emit('report-error', 'El saldo no coincide. Anule los movimientos mas recientes.');
+                                return;
+
+                            } else {
+
+                                $bank_account->update([
+                            
+                                    'amount' => $bank_account->amount + $detail->amount
+                    
+                                ]);
+                    
+                                $bank_account_cover->update([
+                        
+                                    'balance' => $bank_account_cover->balance + $detail->amount
+                    
+                                ]);
+                    
+                                $bank_account_cover_detail->update([
+                    
+                                    'egress' => $bank_account_cover_detail->egress - $detail->amount,
+                                    'actual_balance' => $bank_account_cover_detail->actual_balance + $detail->amount
+                    
+                                ]);
+
+                            }
+                        }
+
+                        $detail->delete();
+                        DB::commit();
+                        $this->emit('report-error', 'Movimiento Anulado.');
+                        $this->mount();
+                        $this->render();
+
+                    } catch (Exception $e) {
+
+                        DB::rollback();
+                        //$this->emit('report-error', $e->getMessage());
+                        $this->emit('report-error', 'Algo salio mal.');
+
+                    }
+                }
+            }
+        }
+    }
 }
