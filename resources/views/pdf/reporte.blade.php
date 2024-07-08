@@ -86,7 +86,7 @@
                             <td align="center">INGRESO</td>
                             <td align="center">{{ $i->code }}</td>
                             <td align="center">{{ $i->brand }}</td>
-                            <td align="center">${{ $i->cost }}</td>
+                            <td align="center">${{ number_format($i->cost, 2) }}</td>
                             <td align="center">{{ $i->pf }}</td>
                             <td align="center">{{ $i->quantity }}</td>
                             <td align="center">${{ number_format($i->total, 2) }}</td>
@@ -100,7 +100,7 @@
                             <td align="center">TRASPASO</td>
                             <td align="center">{{ $i->code }}</td>
                             <td align="center">{{ $i->brand }}</td>
-                            <td align="center">${{ $i->cost }}</td>
+                            <td align="center">${{ number_format($i->cost, 2) }}</td>
                             <td align="center">{{ $i->pf }}</td>
                             <td align="center">{{ $i->quantity }}</td>
                             <td align="center">${{ number_format($i->total, 2) }}</td>
@@ -114,7 +114,7 @@
                             <td align="center">VENTA</td>
                             <td align="center">{{ $i->code }}</td>
                             <td align="center">{{ $i->brand }}</td>
-                            <td align="center">${{ $i->cost }}</td>
+                            <td align="center">${{ number_format($i->cost, 2) }}</td>
                             <td align="center">{{ $i->pf }}</td>
                             <td align="center">{{ $i->quantity }}</td>
                             <td align="center">${{ number_format($i->total, 2) }}</td>
@@ -133,7 +133,7 @@
                         <td class="text-center">
                             <b>{{ $income->sum('quantity') }}</b>
                         </td>
-                        <td class="text-center" colspan="1">
+                        <td class="text-center">
                             <span><b>${{ number_format($income->sum('total'), 2) }}</b></span>
                         </td>
                         <td colspan="3"></td>
@@ -146,7 +146,7 @@
                         <td class="text-center">
                             <b>{{ $transfer->sum('quantity') }}</b>
                         </td>
-                        <td class="text-center" colspan="1">
+                        <td class="text-center">
                             <span><b>${{ number_format($transfer->sum('total'), 2) }}</b></span>
                         </td>
                         <td colspan="3"></td>
@@ -159,7 +159,7 @@
                         <td class="text-center">
                             <b>{{ $sale->sum('quantity') }}</b>
                         </td>
-                        <td class="text-center" colspan="1">
+                        <td class="text-center">
                             <span><b>${{ number_format($sale->sum('total'), 2) }}</b></span>
                         </td>
                         {{--<td class="text-center">
@@ -192,7 +192,7 @@
                         <tr>
                             <td align="center">{{ $i->code }}</td>
                             <td align="center">{{ $i->brand }}</td>
-                            <td align="center">${{ $i->cost }}</td>
+                            <td align="center">${{ number_format($i->cost, 2) }}</td>
                             <td align="center">{{ $i->pf }}</td>
                             <td align="center">{{ $i->quantity }}</td>
                             <td align="center">${{ number_format($i->total, 2) }}</td>
@@ -212,10 +212,10 @@
                         <td class="text-center">
                             <b>{{ $income->sum('quantity') }}</b>
                         </td>
-                        <td class="text-center" colspan="1">
+                        <td class="text-center">
                             <span><b>${{ number_format($income->sum('total'), 2) }}</b></span>
                         </td>
-                        <td colspan="3"></td>
+                        <td colspan="4"></td>
                     </tr>
                 </tfoot>
             </table>
@@ -242,7 +242,7 @@
                         <tr>
                             <td align="center">{{ $i->code }}</td>
                             <td align="center">{{ $i->brand }}</td>
-                            <td align="center">${{ $i->cost }}</td>
+                            <td align="center">${{ number_format($i->cost, 2) }}</td>
                             <td align="center">{{ $i->pf }}</td>
                             <td align="center">{{ $i->quantity }}</td>
                             <td align="center">${{ number_format($i->total, 2) }}</td>
@@ -262,7 +262,7 @@
                         <td class="text-center">
                             <b>{{ $transfer->sum('quantity') }}</b>
                         </td>
-                        <td class="text-center" colspan="1">
+                        <td class="text-center">
                             <span><b>${{ number_format($transfer->sum('total'), 2) }}</b></span>
                         </td>
                         <td colspan="4"></td>
@@ -292,14 +292,14 @@
                 <tbody>
                     @foreach ($sale as $i)
                         <tr>
-                            <td align="center">{{ $i->description }}</td>
+                            <td align="center">{{ $i->code }}</td>
                             <td align="center">{{ $i->brand }}</td>
-                            <td align="center">${{ $i->cost }}</td>
+                            <td align="center">${{ number_format($i->cost, 2) }}</td>
                             {{--<td align="center">${{ $i->price }}</td>--}}
                             <td align="center">${{ number_format(($i->total / $i->quantity),2) }}</td>
                             <td align="center">{{ $i->quantity }}</td>
-                            <td align="center">${{ $i->total }}</td>
-                            <td align="center">${{ $i->utility }}</td>
+                            <td align="center">${{ number_format($i->total, 2) }}</td>
+                            <td align="center">${{ number_format($i->utility, 2) }}</td>
                             <td align="center">{{ $i->office }}</td>
                             <td align="center">{{ $i->pf }}</td>
                             <td align="center">{{ $i->user }}</td>
@@ -312,17 +312,17 @@
                         <td class="text-center">
                             <span><b>TOTALES</b></span>
                         </td>
-                        <td colspan="4"></td>
+                        <td colspan="3"></td>
                         <td class="text-center">
                             <b>{{ $sale->sum('quantity') }}</b>
                         </td>
-                        <td class="text-center" colspan="1">
+                        <td class="text-center">
                             <span><b>${{ number_format($sale->sum('total'), 2) }}</b></span>
                         </td>
-                        <td class="text-center" colspan="1">
+                        <td class="text-center">
                             <span><b>${{ number_format($sale->sum('utility'), 2) }}</b></span>
                         </td>
-                        <td colspan="3"></td>
+                        <td colspan="4"></td>
                     </tr>
                 </tfoot>
             </table>
