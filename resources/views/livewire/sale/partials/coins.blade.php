@@ -25,9 +25,7 @@
                                 <span class="input-group-text input-gp hideonsm" style="background: #3B3F5C; color:white">Efectivo</span>
                             </div>
                             <!--directiva de livewire para relacionar el input con una propiedad publica-->
-                            <!--directiva de livewire para llamar a metodo del controlador al presionar la tecla indicada-->
-                            <input type="number" id="cash" wire:model="efectivo" wire:keydown.enter="saveSale" class="form-control text-center" 
-                            value="{{ $efectivo }}">
+                            <input type="number" id="cash" wire:model="efectivo" class="form-control text-center" value="{{ $efectivo }}">
                             <div class="input-group-append">
                                 <!--directiva click de livewire para dejar el valor de la propiedad publica en 0-->
                                 <!--metodo $set de livewire recibe por parametros (propiedad publica,valor a establecer)-->
@@ -50,7 +48,9 @@
                             <div class="col-sm-12 col-md-12 col-lg-6">
                                 @if($efectivo >= $total && $total > 0)  <!--validacion para mostrar boton-->
                                 <!--directiva de livewire para llamar a metodo del controlador-->
-                                <button wire:click.prevent="saveSale" class="btn btn-dark btn-md btn-block">GUARDAR</button>
+                                <button class="btn btn-dark btn-md btn-block" wire:click.prevent="saveSale($('#printing_checkbox').is(':checked'),$('#pf').val())">
+                                    GUARDAR
+                                </button>
                                 @endif
                             </div>
                         </div>

@@ -14,7 +14,6 @@
                                 <th class="table-th text-center text-white">PRECIO</th>
                                 <th width="13%" class="table-th text-center text-white">CANTIDAD</th>
                                 <th class="table-th text-center text-white">IMPORTE</th>
-                                <th class="table-th text-center text-white">PROFORMA</th>
                                 <th class="table-th text-center text-white">ACTIONS</th>
                             </tr>
                         </thead>
@@ -32,7 +31,7 @@
                                         </span>
                                     @endif
                                 </td>--}}
-                                <td><h6 class="text-center">{{ $item->attributes[1] . ' ' .$item->attributes[3]. ' ' .$item->attributes[0]. ' ' .$item->attributes[5]}}</h6></td>
+                                <td><h6 class="text-center">{{ $item->attributes[0] . ' ' .$item->attributes[1]. ' ' .$item->attributes[2]. ' ' .$item->attributes[3]}}</h6></td>
                                 <td><h6 class="text-center">{{ $item->name }}</h6></td>
                                 <!--funcion number_format de php para dar formato decimal recibe 2 parametros (numero,cantidad de decimales)-->
                                 <td class="text-center">${{ number_format($item->price,2) }}</td>
@@ -50,7 +49,6 @@
                                         ${{ number_format($item->price * $item->quantity, 2) }}
                                     </h6>
                                 </td>
-                                <td><h6 class="text-center">{{ $item->attributes[4] }}</h6></td>
                                 <td class="text-center">
                                     <button wire:click.prevent="increaseQty({{ $item->id }})" class="btn btn-dark mbmobile" title="Aumentar 1">
                                         <i class="fas fa-plus"></i>
